@@ -12,7 +12,6 @@ using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using System.Xml.Serialization;
 using LibCommon.Structs;
-using LibCommon.Structs.DBModels;
 using Newtonsoft.Json;
 
 namespace LibCommon
@@ -22,6 +21,70 @@ namespace LibCommon
     /// </summary>
     public static class UtilsHelper
     {
+
+        /// <summary>
+        /// 为字符串添加引号
+        /// </summary>
+        /// <param name="msg"></param>
+        /// <returns></returns>
+        public static string AddQuote(string str)
+        {
+            return $"\"{str.Trim()}\"";
+        }
+        /// <summary>
+        /// 获取启动时传入参数列表
+        /// </summary>
+        /// <param name="args"></param>
+        /// <returns></returns>
+        public static List<KeyValuePair<string, string>> GetMainParams(string[] args)
+        {
+            List<KeyValuePair<string, string>> tmpReturn = new List<KeyValuePair<string, string>>();
+            for (int i = 0; i < args.Length - 1; i++)
+            {
+                if (args[i].Trim().Length == 2 && args[i].Trim().StartsWith('-'))
+                {
+                    if (!string.IsNullOrEmpty(args[i + 1].Trim()))
+                    {
+                        tmpReturn.Add(new KeyValuePair<string,string>(args[i].Trim(),args[i+1].Trim()));
+                    }
+                }
+            }
+            return tmpReturn;
+        }
+        
+        /// <summary>
+        /// 按指定数量对List分组
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="list"></param>
+        /// <param name="groupNum"></param>
+        /// <returns></returns>
+        public static List<List<T>> GetListGroup<T>(List<T> list, int groupNum)
+        {
+            List<List<T>> listGroup = new List<List<T>>();
+            for (int i = 0; i < list.Count(); i += groupNum)
+            {
+                listGroup.Add(list.Skip(i).Take(groupNum).ToList());
+            }
+
+            return listGroup;
+        }
+        
+        /// <summary>
+        /// 日期转long 
+        /// </summary>
+        /// <param name="dt"></param>
+        /// <returns></returns>
+        public static long ConvertDateTimeToLong(DateTime dt)
+        {
+            DateTime dtStart = TimeZone.CurrentTimeZone.ToLocalTime(new DateTime(1970, 1, 1));
+            TimeSpan toNow = dt.Subtract(dtStart);
+            long timeStamp = toNow.Ticks;
+            timeStamp = long.Parse(timeStamp.ToString().Substring(0, timeStamp.ToString().Length - 4));
+            return timeStamp;
+        }
+
+
         /// <summary>
         /// 检查是否为网络异常的http报错
         /// </summary>
@@ -36,6 +99,10 @@ namespace LibCommon
                 || tmp.Equals("an error occurred while sending the request. the response ended prematurely.")
                 || tmp.Equals(
                     "an error occurred while sending the request. unable to read data from the transport connection: connection reset by peer.")
+                || tmp.Contains("operation timed out")
+                || tmp.Contains("network is down")
+                || tmp.Contains("no route")
+                || tmp.Contains("connection refused")
             )
             {
                 return true;
@@ -103,7 +170,7 @@ namespace LibCommon
             ProcessHelper tmpProcessHelper = new ProcessHelper(null, null, null);
             try
             {
-                tmpProcessHelper.RunProcess(ffpath, "", 1000, out string std, out string err);
+                tmpProcessHelper.RunProcess(ffpath, "", 5000, out string std, out string err);
 
                 if (!string.IsNullOrEmpty(std))
                 {
@@ -208,6 +275,33 @@ namespace LibCommon
         }
 
         /// <summary>
+        /// 获取文件的MD5码
+        /// </summary>
+        /// <param name="fileName">传入的文件名（含路径及后缀名）</param>
+        /// <returns></returns>
+        public static string Md5WithFile(string fileName)
+        {
+            try
+            {
+                FileStream file = new FileStream(fileName, FileMode.Open, FileAccess.Read);
+                MD5 md5 = new MD5CryptoServiceProvider();
+                byte[] retVal = md5.ComputeHash(file);
+                file.Close();
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < retVal.Length; i++)
+                {
+                    sb.Append(retVal[i].ToString("x2"));
+                }
+
+                return sb.ToString();
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("GetMD5HashFromFile() fail,error:" + ex.Message);
+            }
+        }
+
+        /// <summary>
         /// 获取MD5加密码值
         /// </summary>
         /// <param name="str"></param>
@@ -260,6 +354,8 @@ namespace LibCommon
             return r.Next(1, ushort.MaxValue);
         }
 
+        
+        
         /// <summary>
         /// 通过mac地址获取ip地址
         /// </summary>
@@ -387,7 +483,7 @@ namespace LibCommon
             try
             {
                 string Url = @"^http(s)?://([\w-]+\.)+[\w-]+(:\d*)?(/[\w- ./?%&=]*)?$";
-                return Regex.IsMatch(str, Url);
+                return Regex.IsMatch(str, Url, RegexOptions.IgnoreCase);
             }
             catch
             {
@@ -405,7 +501,7 @@ namespace LibCommon
             try
             {
                 string Url = @"^rtmp(s)?://([\w-]+\.)+[\w-]+(:\d*)?(/[\w- ./?%&=]*)?$";
-                return Regex.IsMatch(str, Url);
+                return Regex.IsMatch(str, Url, RegexOptions.IgnoreCase);
             }
             catch
             {
@@ -422,8 +518,18 @@ namespace LibCommon
         {
             try
             {
-                string Url = @"^rtsp(s)?://([\w-]+\.)+[\w-]+(:\d*)?(/[\w- ./?%&=]*)?$";
-                return Regex.IsMatch(str, Url);
+                string Url = "^((rtsp|rtsps)?://)"
+                             + "?(([0-9a-zA-Z_!~*'().&=+$%-]+:)?[0-9a-zA-Z_!~*'().&=+$%-]+@)?" //rtsp的user@
+                             + "(([0-9]{1,3}.){3}[0-9]{1,3}" // IP形式的URL- 199.194.52.184
+                             + "|" // 允许IP和DOMAIN（域名）
+                             + "([0-9a-zA-Z_!~*'()-]+.)*" // 域名- www.
+                             + "([0-9a-zA-Z][0-9a-z-]{0,61})?[0-9a-z]." // 二级域名
+                             + "[a-zA-Z]{2,6})" // first level domain- .com or .museum
+                             + "(:[0-9]{1,4})?" // 端口- :80
+                             + "((/?)|" // a slash isn't required if there is no file name
+                             + "(/[0-9a-zA-Z_!~*'().;?:@&=+$,%#-]+)+/?)"
+                             + "[A-Za-z0-9_!~*'().;?:@&=+$,%#-]{4,40}$";
+                return Regex.IsMatch(str, Url, RegexOptions.IgnoreCase);
             }
             catch
             {

@@ -16,6 +16,16 @@ namespace AKStreamWeb.Misc
     /// </summary>
     public static class SipServerCallBack
     {
+        /// <summary>
+        /// 当设备注册需要鉴权时，用于获取外部的设备密钥
+        /// </summary>
+        /// <param name="sipDeviceId"></param>
+        /// <returns>返回此设备的密钥</returns>
+        public static string OnAuthentication(string sipDeviceId)
+        {
+            return null;
+        }
+
         public static void OnRegister(string sipDeviceJson)
         {
             //设备注册时
@@ -23,7 +33,12 @@ namespace AKStreamWeb.Misc
 
         public static void OnUnRegister(string sipDeviceJson)
         {
-            //设备注销时
+            //设备注销时，要清掉在线流
+            var sipDevice = JsonHelper.FromJson<SipDevice>(sipDeviceJson);
+
+            GCommon.Ldb.VideoOnlineInfo.DeleteMany(x => x.DeviceId.Equals(sipDevice.DeviceId));
+             GCommon.Logger.Info(
+                $"[{Common.LoggerHead}]->设备注销->{sipDevice.RemoteEndPoint.Address.MapToIPv4().ToString()}-{sipDevice.DeviceId}->所有通道-->注销成功");
         }
 
         public static void OnKeepalive(string deviceId, DateTime keepAliveTime, int lostTimes)
@@ -43,42 +58,42 @@ namespace AKStreamWeb.Misc
 
         public static void OnDeviceReadyReceived(SipDevice sipDevice)
         {
-            Logger.Debug(
+             GCommon.Logger.Debug(
                 $"[{Common.LoggerHead}]->设备就绪->{sipDevice.RemoteEndPoint.Address.MapToIPv4().ToString()}-{sipDevice.DeviceId}");
             ResponseStruct rs;
-            SipMethodProxy sipMethodProxy2 = new SipMethodProxy(5000);
+            SipMethodProxy sipMethodProxy2 = new SipMethodProxy(Common.AkStreamWebConfig.WaitSipRequestTimeOutMSec);
             if (sipMethodProxy2.GetSipDeviceInfo(sipDevice, out rs))
             {
-                Logger.Debug(
+                 GCommon.Logger.Debug(
                     $"[{Common.LoggerHead}]->获取设备信息成功->{sipDevice.RemoteEndPoint.Address.MapToIPv4().ToString()}-{sipDevice.DeviceId}\r\n{JsonHelper.ToJson(sipDevice.DeviceInfo, Formatting.Indented)}");
             }
             else
             {
-                Logger.Warn(
+                 GCommon.Logger.Warn(
                     $"[{Common.LoggerHead}]->获取设备信息失败->{sipDevice.RemoteEndPoint.Address.MapToIPv4().ToString()}-{sipDevice.DeviceId}\r\n{JsonHelper.ToJson(rs, Formatting.Indented)}");
             }
 
-            SipMethodProxy sipMethodProxy3 = new SipMethodProxy(5000);
+            SipMethodProxy sipMethodProxy3 = new SipMethodProxy(Common.AkStreamWebConfig.WaitSipRequestTimeOutMSec);
             if (sipMethodProxy3.GetSipDeviceStatus(sipDevice, out rs))
             {
-                Logger.Debug(
+                 GCommon.Logger.Debug(
                     $"[{Common.LoggerHead}]->获取设备状态信息成功->{sipDevice.RemoteEndPoint.Address.MapToIPv4().ToString()}-{sipDevice.DeviceId}\r\n{JsonHelper.ToJson(sipDevice.DeviceStatus, Formatting.Indented)}");
             }
             else
             {
-                Logger.Warn(
+                 GCommon.Logger.Warn(
                     $"[{Common.LoggerHead}]->获取设备状态信息失败->{sipDevice.RemoteEndPoint.Address.MapToIPv4().ToString()}-{sipDevice.DeviceId}\r\n{JsonHelper.ToJson(rs, Formatting.Indented)}");
             }
 
-            SipMethodProxy sipMethodProxy = new SipMethodProxy(5000);
+            SipMethodProxy sipMethodProxy = new SipMethodProxy(Common.AkStreamWebConfig.WaitSipRequestTimeOutMSec);
             if (sipMethodProxy.DeviceCatalogQuery(sipDevice, out rs))
             {
-                Logger.Debug(
+                 GCommon.Logger.Debug(
                     $"[{Common.LoggerHead}]->设备目录获取成功->{sipDevice.RemoteEndPoint.Address.MapToIPv4().ToString()}-{sipDevice.DeviceId}\r\n{JsonHelper.ToJson(sipDevice.SipChannels, Formatting.Indented)}");
             }
             else
             {
-                Logger.Error(
+                 GCommon.Logger.Error(
                     $"[{Common.LoggerHead}]->设备目录获取失败->{sipDevice.RemoteEndPoint.Address.MapToIPv4().ToString()}-{sipDevice.DeviceId}\r\n{JsonHelper.ToJson(rs, Formatting.Indented)}");
             }
         }
@@ -89,7 +104,7 @@ namespace AKStreamWeb.Misc
         /// <param name="sipChannel"></param>
         public static void OnCatalogReceived(SipChannel sipChannel)
         {
-            Logger.Debug(
+             GCommon.Logger.Debug(
                 $"[{Common.LoggerHead}]->收到一条设备目录通知->{sipChannel.RemoteEndPoint.Address.MapToIPv4().ToString()}-{sipChannel.ParentId}:{sipChannel.DeviceId}");
 
             if (sipChannel.SipChannelType.Equals(SipChannelType.VideoChannel) &&
@@ -136,6 +151,7 @@ namespace AKStreamWeb.Misc
                 videoChannel.PDepartmentName = "";
                 videoChannel.RtpWithTcp = false;
                 videoChannel.VideoSrcUrl = null;
+                videoChannel.RecordSecs = 0;
                 videoChannel.MethodByGetStream = MethodByGetStream.None;
                 videoChannel.MainId = sipChannel.Stream;
                 videoChannel.VideoDeviceType = VideoDeviceType.UNKNOW;
@@ -144,13 +160,13 @@ namespace AKStreamWeb.Misc
                     var ret = ORMHelper.Db.Insert(videoChannel).ExecuteAffrows();
                     if (ret > 0)
                     {
-                        Logger.Debug(
+                         GCommon.Logger.Debug(
                             $"[{Common.LoggerHead}]->写入一条新的设备目录到数据库，需激活后使用->{sipChannel.RemoteEndPoint.Address.MapToIPv4().ToString()}-{sipChannel.ParentId}:{sipChannel.DeviceId}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    Logger.Error($"[{Common.LoggerHead}]->数据库写入异常->{ex.Message}\r\n{ex.StackTrace}");
+                     GCommon.Logger.Error($"[{Common.LoggerHead}]->数据库写入异常->{ex.Message}\r\n{ex.StackTrace}");
                 }
             }
         }

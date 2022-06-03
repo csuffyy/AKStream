@@ -20,35 +20,40 @@ namespace LibCommon.Structs.DBModels
     [Index("idx_vcs_enbl", "Enabled", false)]
     public class VideoChannel
     {
-        private long _id;
-        private string _mainId;
-        private string _mediaServerId;
-        private string? _vhost;
         private string? _app;
+        private bool _autoRecord;
+        private bool _autoVideo;
+        private string? _channelId;
         private string? _channelName;
+        private DateTime _createTime;
+        private bool? _defaultRtpPort;
         private string? _departmentId;
         private string? _departmentName;
-        private string? _pDepartmentId;
-        private string? _pDepartmentName;
+        private string? _deviceId;
         private DeviceNetworkType _deviceNetworkType;
         private DeviceStreamType _deviceStreamType;
-        private MethodByGetStream _methodByGetStream;
-        private VideoDeviceType _videoDeviceType;
-        private bool _autoVideo;
-        private bool _autoRecord;
-        private string? _recordPlanName;
+        private bool? _enabled;
+        private bool _hasPtz;
+        private long _id;
         private string _ipV4Address;
         private string? _ipV6Address;
-        private bool _hasPtz;
-        private string? _deviceId;
-        private string? _channelId;
-        private bool? _rtpWithTcp;
-        private string? _videoSrcUrl;
-        private bool? _defaultRtpPort;
-        private DateTime _createTime;
-        private DateTime _updateTime;
-        private bool? _enabled;
+        private string _mainId;
+        private string _mediaServerId;
+        private MethodByGetStream _methodByGetStream;
         private bool? _noPlayerBreak;
+        private string? _pDepartmentId;
+        private string? _pDepartmentName;
+        private string? _recordPlanName;
+        private int? _recordSecs = 0;
+        private bool? _rtpWithTcp;
+        private DateTime _updateTime;
+        private string? _vhost;
+        private VideoDeviceType _videoDeviceType;
+        private string? _videoSrcUrl;
+        private string? _ffmpegTemplate;
+        private bool _isShareChannel;
+        private string? _shareUrl;
+        private string? _shareDeviceId;
 
 
         /// <summary>
@@ -216,6 +221,15 @@ namespace LibCommon.Structs.DBModels
         }
 
         /// <summary>
+        /// 录制时长（秒）
+        /// </summary>
+        public int? RecordSecs
+        {
+            get => _recordSecs;
+            set => _recordSecs = value;
+        }
+
+        /// <summary>
         /// 录制计划模板名称
         /// </summary>
         public string? RecordPlanName
@@ -337,6 +351,50 @@ namespace LibCommon.Structs.DBModels
         {
             get => _noPlayerBreak;
             set => _noPlayerBreak = value;
+        }
+
+        /// <summary>
+        /// ffmpeg的模板名称，可指定这个流使用哪个ffmpeg模板进行拉流
+        /// 留空时，采用默认配置进行拉流
+        /// </summary>
+        public string? FFmpegTemplate
+        {
+            get => _ffmpegTemplate;
+            set => _ffmpegTemplate = value;
+        }
+
+        /// <summary>
+        /// 是否为可分享通道？
+        /// 如果为true,则此通道可以被推往其他服务器
+        /// </summary>
+        public bool IsShareChannel
+        {
+            get => _isShareChannel;
+            set => _isShareChannel = value;
+        }
+
+        /// <summary>
+        /// 分享通道地址
+        /// 如果IsShareChannel为true,而ShareUrl为空，则表示此通道可以分享给GB28181服务器
+        /// 如果IsShareChannel为true,而ShareUrl不为空，则表示此通道可以分享线GB28181服务
+        /// 器的同时还可以分享给其他流媒体服务器
+        /// </summary>
+        public string? ShareUrl
+        {
+            get => _shareUrl;
+            set => _shareUrl = value;
+        }
+
+        /// <summary>
+        /// 共享通道时此通道的唯一id
+        /// gb28181时可以是deviceid
+        /// 其他服务时可以按照其他服务的
+        /// 规则来确定此id
+        /// </summary>
+        public string? ShareDeviceId
+        {
+            get => _shareDeviceId;
+            set => _shareDeviceId = value;
         }
     }
 }

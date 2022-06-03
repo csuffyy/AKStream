@@ -15,6 +15,19 @@ namespace LibCommon
     /// </summary>
     public static class NetHelper
     {
+        /// <summary>
+        /// 不检查证书
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="certificate"></param>
+        /// <param name="chain"></param>
+        /// <param name="errors"></param>
+        /// <returns></returns>
+        private static bool CheckValidationResult(object sender, X509Certificate certificate, X509Chain chain,
+            SslPolicyErrors errors)
+        {
+            return true; //总是接受
+        }
         //todo:重写
         /*
             用HttpClientFactory重构。 参考:https://www.cnblogs.com/deepthought/p/11303015.html
@@ -551,20 +564,6 @@ namespace LibCommon
 
         #endregion
 
-        /// <summary>
-        /// 不检查证书
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="certificate"></param>
-        /// <param name="chain"></param>
-        /// <param name="errors"></param>
-        /// <returns></returns>
-        private static bool CheckValidationResult(object sender, X509Certificate certificate, X509Chain chain,
-            SslPolicyErrors errors)
-        {
-            return true; //总是接受
-        }
-
         #region 下载
 
         /// <summary>
@@ -640,14 +639,17 @@ namespace LibCommon
                 try
                 {
                     base64out = FileToBase64(tmpFilePath);
+                    Console.WriteLine(base64out);
+                    File.Delete(tmpFilePath);
                     return true;
                 }
                 catch (Exception ex)
                 {
+                   
                     throw ex;
                 }
             }
-
+          
             return false;
         }
 
@@ -679,7 +681,7 @@ namespace LibCommon
 
                 if (startPosition >= remoteFileLength)
                 {
-                    Logger.Debug("本地文件长度" + startPosition + "已经大于等于远程文件长度" + remoteFileLength + "。下载完成。");
+                    GCommon.Logger.Debug("本地文件长度" + startPosition + "已经大于等于远程文件长度" + remoteFileLength + "。下载完成。");
                     writeStream.Close();
 
                     return false;

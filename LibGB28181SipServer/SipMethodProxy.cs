@@ -1,9 +1,11 @@
 using System;
 using System.Threading;
 using LibCommon;
+using LibCommon.Enums;
 using LibCommon.Structs;
 using LibCommon.Structs.GB28181;
 using LibCommon.Structs.GB28181.XML;
+using LibLogger;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
@@ -15,18 +17,20 @@ namespace LibGB28181SipServer
     public class SipMethodProxy : IDisposable
     {
         private AutoResetEvent _autoResetEvent = new AutoResetEvent(false);
+        private CommandType _commandType;
         private SipServer _sipServer;
         private int _timeout;
-        private CommandType _commandType;
 
         public SipMethodProxy(int timeout = 5000)
         {
             _timeout = timeout;
         }
 
-        ~SipMethodProxy()
+        [JsonConverter(typeof(StringEnumConverter))]
+        public CommandType CommandType
         {
-            Dispose(); //释放非托管资源
+            get => _commandType;
+            set => _commandType = value;
         }
 
         public void Dispose()
@@ -37,11 +41,9 @@ namespace LibGB28181SipServer
             }
         }
 
-        [JsonConverter(typeof(StringEnumConverter))]
-        public CommandType CommandType
+        ~SipMethodProxy()
         {
-            get => _commandType;
-            set => _commandType = value;
+            Dispose(); //释放非托管资源
         }
 
 
@@ -59,6 +61,8 @@ namespace LibGB28181SipServer
                 var isTimeout = _autoResetEvent.WaitOne(_timeout);
                 if (!isTimeout || !rs.Code.Equals(ErrorNumber.None))
                 {
+                    string timeoutStr = rs.Code == ErrorNumber.None ? "操作超时("+_timeout+"ms)" : "未知错误";
+                    GCommon.Logger.Warn($"[{Common.LoggerHead}]->Sip代理获取设备状态信息失败->{JsonHelper.ToJson(rs)}->{timeoutStr}");
                     return false;
                 }
 
@@ -84,6 +88,8 @@ namespace LibGB28181SipServer
                 var isTimeout = _autoResetEvent.WaitOne(_timeout);
                 if (!isTimeout || !rs.Code.Equals(ErrorNumber.None))
                 {
+                    string timeoutStr = rs.Code == ErrorNumber.None ? "操作超时("+_timeout+"ms)" : "未知错误";
+                    GCommon.Logger.Warn($"[{Common.LoggerHead}]->Sip代理获取设备信息失败->{JsonHelper.ToJson(rs)}->{timeoutStr}");
                     return false;
                 }
 
@@ -102,9 +108,10 @@ namespace LibGB28181SipServer
         /// <param name="sipChannel"></param>
         /// <param name="queryRecordFile"></param>
         /// <returns></returns>
-        public bool QueryRecordFileList(SipChannel sipChannel, SipQueryRecordFile queryRecordFile,
+        public int QueryRecordFileList(SipChannel sipChannel, SipQueryRecordFile queryRecordFile,
             out ResponseStruct rs)
         {
+            queryRecordFile.TaskId = new Random().Next(1, int.MaxValue);
             AutoResetEvent _autoResetEvent2 = null;
             try
             {
@@ -115,16 +122,20 @@ namespace LibGB28181SipServer
                 var isTimeout = _autoResetEvent.WaitOne(_timeout);
                 if (!isTimeout || !rs.Code.Equals(ErrorNumber.None))
                 {
-                    return false;
+                    string timeoutStr = rs.Code == ErrorNumber.None ? "操作超时("+_timeout+"ms)" : "未知错误";
+                    GCommon.Logger.Warn($"[{Common.LoggerHead}]->Sip代理获取历史视频列表失败->{JsonHelper.ToJson(rs)}->{timeoutStr}");
+                    return -1;
                 }
 
                 isTimeout = _autoResetEvent2.WaitOne(_timeout);
+
                 if (isTimeout)
                 {
-                    return true;
+                    return (int) queryRecordFile.TaskId;
                 }
 
-                return false;
+                GCommon.Logger.Warn($"[{Common.LoggerHead}]->Sip代理获取历史视频列表失败->{JsonHelper.ToJson(rs)}");
+                return -1;
             }
             finally
             {
@@ -148,6 +159,8 @@ namespace LibGB28181SipServer
                 var isTimeout = _autoResetEvent.WaitOne(_timeout);
                 if (!isTimeout || !rs.Code.Equals(ErrorNumber.None))
                 {
+                    string timeoutStr = rs.Code == ErrorNumber.None ? "操作超时("+_timeout+"ms)" : "未知错误";
+                    GCommon.Logger.Warn($"[{Common.LoggerHead}]->Sip代理PTZ控制失败->{JsonHelper.ToJson(rs)}->{timeoutStr}");
                     return false;
                 }
 
@@ -175,6 +188,8 @@ namespace LibGB28181SipServer
                 var isTimeout = _autoResetEvent.WaitOne(_timeout);
                 if (!isTimeout || !rs.Code.Equals(ErrorNumber.None))
                 {
+                    string timeoutStr = rs.Code == ErrorNumber.None ? "操作超时("+_timeout+"ms)" : "未知错误";
+                    GCommon.Logger.Warn($"[{Common.LoggerHead}]->Sip代理结束推流失败(历史视频)->{JsonHelper.ToJson(rs)}->{timeoutStr}");
                     return false;
                 }
 
@@ -198,16 +213,20 @@ namespace LibGB28181SipServer
         {
             try
             {
+                sipChannel.PushStatus = PushStatus.IGNORE;
                 Common.SipServer.DeInvite(sipChannel, _autoResetEvent, out rs, _timeout);
                 _commandType = CommandType.Unknown;
+
                 var isTimeout = _autoResetEvent.WaitOne(_timeout);
                 if (!isTimeout || !rs.Code.Equals(ErrorNumber.None))
                 {
+                    string timeoutStr = rs.Code == ErrorNumber.None ? "操作超时("+_timeout+"ms)" : "未知错误";
+                    GCommon.Logger.Warn($"[{Common.LoggerHead}]->Sip代理结束推流失败->{JsonHelper.ToJson(rs)}->{timeoutStr}");
                     return false;
                 }
 
                 sipChannel.PushStatus = PushStatus.IDLE;
-                sipChannel.ChannelMediaServerStreamInfo = null;
+
                 return true;
             }
             finally
@@ -228,14 +247,31 @@ namespace LibGB28181SipServer
             {
                 _commandType = CommandType.Play;
                 Common.SipServer.Invite(sipChannel, pushMediaInfo, _autoResetEvent, out rs, _timeout);
+
                 var isTimeout = _autoResetEvent.WaitOne(_timeout);
                 if (!isTimeout || !rs.Code.Equals(ErrorNumber.None))
                 {
+                    string timeoutStr = rs.Code == ErrorNumber.None ? "操作超时("+_timeout+"ms)" : "未知错误";
+                    GCommon.Logger.Warn($"[{Common.LoggerHead}]->Sip代理推流失败->{JsonHelper.ToJson(rs)}->{timeoutStr}");
+                    sipChannel.PushStatus = PushStatus.IDLE;
                     return false;
                 }
 
+
                 sipChannel.PushStatus = PushStatus.PUSHON;
                 return true;
+            }
+            catch (Exception ex)
+            {
+                rs = new ResponseStruct()
+                {
+                    Code = ErrorNumber.Sip_InviteExcept,
+                    Message = ErrorMessage.ErrorDic![ErrorNumber.Sip_InviteExcept],
+                    ExceptMessage = ex.Message,
+                    ExceptStackTrace = ex.StackTrace,
+                };
+                GCommon.Logger.Error($"[{Common.LoggerHead}]->Sip代理推流异常->{JsonHelper.ToJson(rs)}");
+                return false;
             }
             finally
             {
@@ -259,11 +295,25 @@ namespace LibGB28181SipServer
                 var isTimeout = _autoResetEvent.WaitOne(_timeout);
                 if (!isTimeout || !rs.Code.Equals(ErrorNumber.None))
                 {
+                    string timeoutStr = rs.Code == ErrorNumber.None ? "操作超时("+_timeout+"ms)" : "未知错误";
+                    GCommon.Logger.Warn($"[{Common.LoggerHead}]->Sip代理推流失败(历史视频)->{JsonHelper.ToJson(rs)}->{timeoutStr}");
                     return false;
                 }
 
                 record.PushStatus = PushStatus.PUSHON;
                 return true;
+            }
+            catch (Exception ex)
+            {
+                rs = new ResponseStruct()
+                {
+                    Code = ErrorNumber.Sip_InviteExcept,
+                    Message = ErrorMessage.ErrorDic![ErrorNumber.Sip_InviteExcept],
+                    ExceptMessage = ex.Message,
+                    ExceptStackTrace = ex.StackTrace,
+                };
+                GCommon.Logger.Error($"[{Common.LoggerHead}]->Sip代理推流异常(历史视频)->{JsonHelper.ToJson(rs)}");
+                return false;
             }
             finally
             {
@@ -287,6 +337,8 @@ namespace LibGB28181SipServer
                 var isTimeout = _autoResetEvent.WaitOne(_timeout);
                 if (!isTimeout || !rs.Code.Equals(ErrorNumber.None))
                 {
+                    string timeoutStr = rs.Code == ErrorNumber.None ? "操作超时("+_timeout+"ms)" : "未知错误";
+                    GCommon.Logger.Warn($"[{Common.LoggerHead}]->Sip代理获取设备目录失败->{JsonHelper.ToJson(rs)}->{timeoutStr}");
                     return false;
                 }
 
@@ -296,11 +348,52 @@ namespace LibGB28181SipServer
                     return true;
                 }
 
+                GCommon.Logger.Warn($"[{Common.LoggerHead}]->Sip代理获取设备目录失败->{JsonHelper.ToJson(rs)}");
                 return false;
             }
             finally
             {
                 _autoResetEvent2.Dispose();
+                Dispose();
+            }
+        }
+        
+        /// <summary>
+        /// 控制回放随机拖拽（GB28181）
+        /// </summary>
+        /// <param name="record"></param>
+        /// <param name="pushMediaInfo"></param>
+        /// <param name="rs"></param>
+        /// <returns></returns>
+        public bool InviteRecordPosition(RecordInfo.RecItem record, PushMediaInfo pushMediaInfo, long time, out ResponseStruct rs)
+        {
+            try
+            {
+                _commandType = CommandType.Playback;
+                Common.SipServer.InviteRecordPosition(record, pushMediaInfo, time, _autoResetEvent, out rs, _timeout);
+                var isTimeout = _autoResetEvent.WaitOne(_timeout);
+                if (!isTimeout || !rs.Code.Equals(ErrorNumber.None))
+                {
+                    string timeoutStr = rs.Code == ErrorNumber.None ? "操作超时("+_timeout+"ms)" : "未知错误";
+                    GCommon.Logger.Warn($"[{Common.LoggerHead}]->Sip代理推流失败(历史视频随机拖拽)->{JsonHelper.ToJson(rs)}->{timeoutStr}");
+                    return false;
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                rs = new ResponseStruct()
+                {
+                    Code = ErrorNumber.Sip_InviteExcept,
+                    Message = ErrorMessage.ErrorDic![ErrorNumber.Sip_InviteExcept],
+                    ExceptMessage = ex.Message,
+                    ExceptStackTrace = ex.StackTrace,
+                };
+                GCommon.Logger.Error($"[{Common.LoggerHead}]->Sip代理推流异常(历史视频)->{JsonHelper.ToJson(rs)}");
+                return false;
+            }
+            finally
+            {
                 Dispose();
             }
         }

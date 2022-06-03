@@ -30,7 +30,6 @@ namespace SIPSorcery.Sys
         }
 
         private static ILogger _logger;
-
         internal static ILogger Logger
         {
             get
@@ -42,7 +41,10 @@ namespace SIPSorcery.Sys
 
                 return _logger;
             }
-            set { _logger = value; }
+            set
+            {
+                _logger = value;
+            }
         }
 
         /// <summary>

@@ -88,8 +88,7 @@ namespace SIPSorcery.Net
         {
             if (!IsHashSupported(hashAlgorithm))
             {
-                throw new ApplicationException(
-                    $"Hash algorithm {hashAlgorithm} is not supported for DTLS fingerprints.");
+                throw new ApplicationException($"Hash algorithm {hashAlgorithm} is not supported for DTLS fingerprints.");
             }
 
             IDigest digestAlgorithm = DigestUtilities.GetDigest(hashAlgorithm.ToString());
@@ -142,13 +141,13 @@ namespace SIPSorcery.Net
         }
 
         public static TlsAgreementCredentials LoadAgreementCredentials(TlsContext context,
-            Certificate certificate, AsymmetricKeyParameter privateKey)
+                Certificate certificate, AsymmetricKeyParameter privateKey)
         {
             return new DefaultTlsAgreementCredentials(certificate, privateKey);
         }
 
         public static TlsAgreementCredentials LoadAgreementCredentials(TlsContext context,
-            string[] certResources, string keyResource)
+                string[] certResources, string keyResource)
         {
             Certificate certificate = LoadCertificateChain(certResources);
             AsymmetricKeyParameter privateKey = LoadPrivateKeyResource(keyResource);
@@ -156,29 +155,29 @@ namespace SIPSorcery.Net
         }
 
         public static TlsEncryptionCredentials LoadEncryptionCredentials(
-            TlsContext context, Certificate certificate, AsymmetricKeyParameter privateKey)
+                TlsContext context, Certificate certificate, AsymmetricKeyParameter privateKey)
         {
             return new DefaultTlsEncryptionCredentials(context, certificate,
-                privateKey);
+                    privateKey);
         }
 
         public static TlsEncryptionCredentials LoadEncryptionCredentials(
-            TlsContext context, string[] certResources, string keyResource)
+                TlsContext context, string[] certResources, string keyResource)
         {
             Certificate certificate = LoadCertificateChain(certResources);
             AsymmetricKeyParameter privateKey = LoadPrivateKeyResource(keyResource);
             return LoadEncryptionCredentials(context, certificate,
-                privateKey);
+                    privateKey);
         }
 
         public static TlsSignerCredentials LoadSignerCredentials(TlsContext context,
-            Certificate certificate, AsymmetricKeyParameter privateKey)
+                Certificate certificate, AsymmetricKeyParameter privateKey)
         {
             return new DefaultTlsSignerCredentials(context, certificate, privateKey);
         }
 
         public static TlsSignerCredentials LoadSignerCredentials(TlsContext context,
-            string[] certResources, string keyResource)
+                string[] certResources, string keyResource)
         {
             Certificate certificate = LoadCertificateChain(certResources);
             AsymmetricKeyParameter privateKey = LoadPrivateKeyResource(keyResource);
@@ -186,21 +185,21 @@ namespace SIPSorcery.Net
         }
 
         public static TlsSignerCredentials LoadSignerCredentials(TlsContext context,
-            Certificate certificate, AsymmetricKeyParameter privateKey,
-            SignatureAndHashAlgorithm signatureAndHashAlgorithm)
+                Certificate certificate, AsymmetricKeyParameter privateKey,
+                SignatureAndHashAlgorithm signatureAndHashAlgorithm)
         {
             return new DefaultTlsSignerCredentials(context, certificate,
-                privateKey, signatureAndHashAlgorithm);
+                    privateKey, signatureAndHashAlgorithm);
         }
 
         public static TlsSignerCredentials LoadSignerCredentials(TlsContext context,
-            string[] certResources, string keyResource,
-            SignatureAndHashAlgorithm signatureAndHashAlgorithm)
+                string[] certResources, string keyResource,
+                SignatureAndHashAlgorithm signatureAndHashAlgorithm)
         {
             Certificate certificate = LoadCertificateChain(certResources);
             AsymmetricKeyParameter privateKey = LoadPrivateKeyResource(keyResource);
             return LoadSignerCredentials(context, certificate,
-                privateKey, signatureAndHashAlgorithm);
+                    privateKey, signatureAndHashAlgorithm);
         }
 
         public static TlsSignerCredentials LoadSignerCredentials(TlsContext context, IList supportedSignatureAlgorithms,
@@ -235,7 +234,7 @@ namespace SIPSorcery.Net
         public static TlsSignerCredentials LoadSignerCredentials(TlsContext context, IList supportedSignatureAlgorithms,
             byte signatureAlgorithm, string certResource, string keyResource)
         {
-            Certificate certificate = LoadCertificateChain(new string[] {certResource, "x509-ca.pem"});
+            Certificate certificate = LoadCertificateChain(new string[] { certResource, "x509-ca.pem" });
             AsymmetricKeyParameter privateKey = LoadPrivateKeyResource(keyResource);
 
             return LoadSignerCredentials(context, supportedSignatureAlgorithms, signatureAlgorithm, certificate,
@@ -255,18 +254,17 @@ namespace SIPSorcery.Net
 
         public static Certificate LoadCertificateChain(X509Certificate2 certificate)
         {
-            return LoadCertificateChain(new X509Certificate2[] {certificate});
+            return LoadCertificateChain(new X509Certificate2[] { certificate });
         }
 
         public static Certificate LoadCertificateChain(string[] resources)
         {
             X509CertificateStructure[]
-                chain = new X509CertificateStructure[resources.Length];
+            chain = new X509CertificateStructure[resources.Length];
             for (int i = 0; i < resources.Length; ++i)
             {
                 chain[i] = LoadCertificateResource(resources[i]);
             }
-
             return new Certificate(chain);
         }
 
@@ -277,7 +275,6 @@ namespace SIPSorcery.Net
                 var bouncyCertificate = DotNetUtilities.FromX509Certificate(certificate);
                 return X509CertificateStructure.GetInstance(bouncyCertificate.GetEncoded());
             }
-
             throw new Exception("'resource' doesn't specify a valid certificate");
         }
 
@@ -288,13 +285,15 @@ namespace SIPSorcery.Net
             {
                 return X509CertificateStructure.GetInstance(pem.Content);
             }
-
             throw new Exception("'resource' doesn't specify a valid certificate");
         }
 
         public static AsymmetricKeyParameter LoadPrivateKeyResource(X509Certificate2 certificate)
         {
+            // TODO: When .NET Standard and Framework support are deprecated this pragma can be removed.
+#pragma warning disable SYSLIB0028
             return DotNetUtilities.GetKeyPair(certificate.PrivateKey).Private;
+#pragma warning restore SYSLIB0028
         }
 
         public static AsymmetricKeyParameter LoadPrivateKeyResource(string resource)
@@ -304,16 +303,14 @@ namespace SIPSorcery.Net
             {
                 RsaPrivateKeyStructure rsa = RsaPrivateKeyStructure.GetInstance(pem.Content);
                 return new RsaPrivateCrtKeyParameters(rsa.Modulus,
-                    rsa.PublicExponent, rsa.PrivateExponent,
-                    rsa.Prime1, rsa.Prime2, rsa.Exponent1,
-                    rsa.Exponent2, rsa.Coefficient);
+                        rsa.PublicExponent, rsa.PrivateExponent,
+                        rsa.Prime1, rsa.Prime2, rsa.Exponent1,
+                        rsa.Exponent2, rsa.Coefficient);
             }
-
             if (pem.Type.EndsWith("PRIVATE KEY"))
             {
                 return PrivateKeyFactory.CreateKey(pem.Content);
             }
-
             throw new Exception("'resource' doesn't specify a valid private key");
         }
 
@@ -325,28 +322,25 @@ namespace SIPSorcery.Net
                 PemObject o = p.ReadPemObject();
                 return o;
             }
-
             throw new Exception("'resource' doesn't specify a valid private key");
         }
 
         #region Self Signed Utils
 
-        [Obsolete("Use CreateSelfSignedTlsCert instead.")]
+        //[Obsolete("Use CreateSelfSignedTlsCert instead.")]
         public static X509Certificate2 CreateSelfSignedCert(AsymmetricKeyParameter privateKey = null)
         {
             return CreateSelfSignedCert("CN=localhost", "CN=root", privateKey);
         }
 
-        [Obsolete("Use CreateSelfSignedTlsCert instead.")]
-        public static X509Certificate2 CreateSelfSignedCert(string subjectName, string issuerName,
-            AsymmetricKeyParameter privateKey)
+        //[Obsolete("Use CreateSelfSignedTlsCert instead.")]
+        public static X509Certificate2 CreateSelfSignedCert(string subjectName, string issuerName, AsymmetricKeyParameter privateKey)
         {
             const int keyStrength = DEFAULT_KEY_SIZE;
             if (privateKey == null)
             {
                 privateKey = CreatePrivateKeyResource(issuerName);
             }
-
             var issuerPrivKey = privateKey;
 
             // Generating Random Numbers
@@ -356,17 +350,11 @@ namespace SIPSorcery.Net
 
             // The Certificate Generator
             var certificateGenerator = new X509V3CertificateGenerator();
-            certificateGenerator.AddExtension(X509Extensions.SubjectAlternativeName, false,
-                new GeneralNames(new GeneralName[]
-                {
-                    new GeneralName(GeneralName.DnsName, "localhost"), new GeneralName(GeneralName.DnsName, "127.0.0.1")
-                }));
-            certificateGenerator.AddExtension(X509Extensions.ExtendedKeyUsage, true,
-                new ExtendedKeyUsage(new List<DerObjectIdentifier>() {new DerObjectIdentifier("1.3.6.1.5.5.7.3.1")}));
+            certificateGenerator.AddExtension(X509Extensions.SubjectAlternativeName, false, new GeneralNames(new GeneralName[] { new GeneralName(GeneralName.DnsName, "localhost"), new GeneralName(GeneralName.DnsName, "127.0.0.1") }));
+            certificateGenerator.AddExtension(X509Extensions.ExtendedKeyUsage, true, new ExtendedKeyUsage(new List<DerObjectIdentifier>() { new DerObjectIdentifier("1.3.6.1.5.5.7.3.1") }));
 
             // Serial Number
-            var serialNumber =
-                BigIntegers.CreateRandomInRange(BigInteger.One, BigInteger.ValueOf(Int64.MaxValue), random);
+            var serialNumber = BigIntegers.CreateRandomInRange(BigInteger.One, BigInteger.ValueOf(Int64.MaxValue), random);
             certificateGenerator.SetSerialNumber(serialNumber);
 
             // Issuer and Subject Name
@@ -425,7 +413,7 @@ namespace SIPSorcery.Net
                 // merge into X509Certificate2
                 var x509 = new X509Certificate2(certificate.GetEncoded());
 
-                var seq = (Asn1Sequence) Asn1Object.FromByteArray(info.ParsePrivateKey().GetDerEncoded());
+                var seq = (Asn1Sequence)Asn1Object.FromByteArray(info.ParsePrivateKey().GetDerEncoded());
                 if (seq.Count != 9)
                 {
                     throw new PemException("malformed sequence in RSA private key");
@@ -433,10 +421,12 @@ namespace SIPSorcery.Net
 
                 var rsa = RsaPrivateKeyStructure.GetInstance(seq); //new RsaPrivateKeyStructure(seq);
                 var rsaparams = new RsaPrivateCrtKeyParameters(
-                    rsa.Modulus, rsa.PublicExponent, rsa.PrivateExponent, rsa.Prime1, rsa.Prime2, rsa.Exponent1,
-                    rsa.Exponent2, rsa.Coefficient);
+                    rsa.Modulus, rsa.PublicExponent, rsa.PrivateExponent, rsa.Prime1, rsa.Prime2, rsa.Exponent1, rsa.Exponent2, rsa.Coefficient);
 
+                // TODO: When .NET Standard and Framework support are deprecated this pragma can be removed.
+#pragma warning disable SYSLIB0028
                 x509.PrivateKey = ToRSA(rsaparams);
+#pragma warning restore SYSLIB0028
                 return x509;
             }
             catch
@@ -450,8 +440,7 @@ namespace SIPSorcery.Net
             return CreateSelfSignedTlsCert("CN=localhost", "CN=root", null);
         }
 
-        public static (Certificate crtificate, AsymmetricKeyParameter privateKey) CreateSelfSignedTlsCert(
-            string subjectName, string issuerName, AsymmetricKeyParameter issuerPrivateKey)
+        public static (Certificate crtificate, AsymmetricKeyParameter privateKey) CreateSelfSignedTlsCert(string subjectName, string issuerName, AsymmetricKeyParameter issuerPrivateKey)
         {
             const int keyStrength = DEFAULT_KEY_SIZE;
             if (issuerPrivateKey == null)
@@ -466,17 +455,11 @@ namespace SIPSorcery.Net
 
             // The Certificate Generator
             var certificateGenerator = new X509V3CertificateGenerator();
-            certificateGenerator.AddExtension(X509Extensions.SubjectAlternativeName, false,
-                new GeneralNames(new GeneralName[]
-                {
-                    new GeneralName(GeneralName.DnsName, "localhost"), new GeneralName(GeneralName.DnsName, "127.0.0.1")
-                }));
-            certificateGenerator.AddExtension(X509Extensions.ExtendedKeyUsage, true,
-                new ExtendedKeyUsage(new List<DerObjectIdentifier>() {new DerObjectIdentifier("1.3.6.1.5.5.7.3.1")}));
+            certificateGenerator.AddExtension(X509Extensions.SubjectAlternativeName, false, new GeneralNames(new GeneralName[] { new GeneralName(GeneralName.DnsName, "localhost"), new GeneralName(GeneralName.DnsName, "127.0.0.1") }));
+            certificateGenerator.AddExtension(X509Extensions.ExtendedKeyUsage, true, new ExtendedKeyUsage(new List<DerObjectIdentifier>() { new DerObjectIdentifier("1.3.6.1.5.5.7.3.1") }));
 
             // Serial Number
-            var serialNumber =
-                BigIntegers.CreateRandomInRange(BigInteger.One, BigInteger.ValueOf(Int64.MaxValue), random);
+            var serialNumber = BigIntegers.CreateRandomInRange(BigInteger.One, BigInteger.ValueOf(Int64.MaxValue), random);
             certificateGenerator.SetSerialNumber(serialNumber);
 
             // Issuer and Subject Name
@@ -503,13 +486,13 @@ namespace SIPSorcery.Net
             // self sign certificate
             var certificate = certificateGenerator.Generate(signatureFactory);
 
-            var chain = new X509CertificateStructure[] {X509CertificateStructure.GetInstance(certificate.GetEncoded())};
+            var chain = new X509CertificateStructure[] { X509CertificateStructure.GetInstance(certificate.GetEncoded()) };
             var tlsCertificate = new Certificate(chain);
 
             return (tlsCertificate, subjectKeyPair.Private);
         }
 
-        /// <remarks>Plagarised from https://github.com/CryptLink/CertBuilder/blob/master/CertBuilder.cs.
+        /// <remarks>Plagiarised from https://github.com/CryptLink/CertBuilder/blob/master/CertBuilder.cs.
         /// NOTE: netstandard2.1+ and netcoreapp3.1+ have x509.CopyWithPrivateKey which will avoid the need to
         /// use the serialize/deserialize from pfx to get from bouncy castle to .NET Core X509 certificates.</remarks>
         public static X509Certificate2 ConvertBouncyCert(X509Certificate bouncyCert, AsymmetricCipherKeyPair keyPair)
@@ -519,7 +502,7 @@ namespace SIPSorcery.Net
 
             pkcs12Store.SetCertificateEntry(bouncyCert.SerialNumber.ToString(), certEntry);
             pkcs12Store.SetKeyEntry(bouncyCert.SerialNumber.ToString(),
-                new AsymmetricKeyEntry(keyPair.Private), new[] {certEntry});
+                new AsymmetricKeyEntry(keyPair.Private), new[] { certEntry });
 
             X509Certificate2 keyedCert;
 

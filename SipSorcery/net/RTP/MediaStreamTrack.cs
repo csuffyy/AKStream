@@ -18,13 +18,17 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using Microsoft.Extensions.Logging;
 using SIPSorcery.Sys;
-using SIPSorceryMedia.Abstractions.V1;
+using SIPSorceryMedia.Abstractions;
 
 namespace SIPSorcery.Net
 {
     public class MediaStreamTrack
     {
+        private static ILogger logger = Log.Logger;
+
         /// <summary>
         /// The type of media stream represented by this track. Must be audio or video.
         /// </summary>
@@ -33,14 +37,20 @@ namespace SIPSorcery.Net
         /// <summary>
         /// The value used in the RTP Synchronisation Source header field for media packets
         /// sent using this media stream.
+		/// Be careful that the RTP Synchronisation Source header field should not be changed
+		/// unless specific implementations require it. By default this value is chosen randomly,
+		/// with the intent that no two synchronization sources within the same RTP session
+		/// will have the same SSRC.
         /// </summary>
-        public uint Ssrc { get; internal set; }
+        public uint Ssrc { get; set; }
 
         /// <summary>
-        /// The value used in the RTP Sequence Number header field for media packets
-        /// sent using this media stream.
+        /// The last seqnum received from the remote peer for this stream.
         /// </summary>
-        public ushort SeqNum { get; internal set; }
+        public ushort LastRemoteSeqNum { get; internal set; }
+
+        // The value used in the RTP Sequence Number header field for media packets.
+        public ushort SeqNum { get { return (ushort)m_seqNum; } internal set { m_seqNum = value; } }
 
         /// <summary>
         /// The value used in the RTP Timestamp header field for media packets
@@ -86,6 +96,37 @@ namespace SIPSorcery.Net
         /// </summary>
         public Dictionary<uint, SDPSsrcAttribute> SdpSsrc { get; set; } = new Dictionary<uint, SDPSsrcAttribute>();
 
+        private uint _maxBandwith = 0;
+
+        /// <summary>
+        /// If set to a non-zero value for local tracks then a Transport Independent Bandwidth (TIAS) attribute
+        /// will be included in any SDP for the track's media announcement. For remote tracks thi a non-zero
+        /// value indicates the a TIAS attribute was set in the remote SDP media announcement.
+        /// The bandwith is specified in bits per seconds (bps).
+        /// </summary>
+        /// <remarks>
+        /// See https://tools.ietf.org/html/rfc3890.
+        /// </remarks>
+        public uint MaximumBandwidth
+        {
+            get => _maxBandwith;
+            set
+            {
+                if (!IsRemote)
+                {
+                    _maxBandwith = value;
+                }
+                else
+                {
+                    logger.LogWarning("The maximum bandwith cannot be set for remote tracks.");
+                }
+            }
+        }
+
+        // The value used in the RTP Sequence Number header field for media packets.
+        // Although valid values are all in the range of ushort, the underlying field is of type int, because Interlocked.CompareExchange is used to increment in a fast and thread-safe manner and there is no overload for ushort.
+        private int m_seqNum;
+
         /// <summary>
         /// Creates a lightweight class to track a media stream track within an RTP session 
         /// When supporting RFC3550 (the standard RTP specification) the relationship between
@@ -102,8 +143,9 @@ namespace SIPSorcery.Net
         /// to remove capabilities we don't support.</param>
         /// <param name="streamStatus">The initial stream status for the media track. Defaults to
         /// send receive.</param>
-        /// <param name="ssrcAttributes">If th track is being created from an SDP announcement this
-        /// parameter contains a list of </param>
+        /// <param name="ssrcAttributes">Optional. If the track is being created from an SDP announcement this
+        /// parameter contains a list of the SSRC attributes that should then match the RTP header SSRC value
+        /// for this track.</param>
         public MediaStreamTrack(
             SDPMediaTypesEnum kind,
             bool isRemote,
@@ -120,7 +162,7 @@ namespace SIPSorcery.Net
             if (!isRemote)
             {
                 Ssrc = Convert.ToUInt32(Crypto.GetRandomInt(0, Int32.MaxValue));
-                SeqNum = Convert.ToUInt16(Crypto.GetRandomInt(0, UInt16.MaxValue));
+                m_seqNum = Convert.ToUInt16(Crypto.GetRandomInt(0, UInt16.MaxValue));
             }
 
             // Add the source attributes from the remote SDP to help match RTP SSRC and RTCP CNAME values against
@@ -129,7 +171,10 @@ namespace SIPSorcery.Net
             {
                 foreach (var ssrcAttr in ssrcAttributes)
                 {
-                    SdpSsrc.Add(ssrcAttr.SSRC, ssrcAttr);
+                    if (!SdpSsrc.ContainsKey(ssrcAttr.SSRC))
+                    {
+                        SdpSsrc.Add(ssrcAttr.SSRC, ssrcAttr);
+                    }
                 }
             }
         }
@@ -143,10 +188,8 @@ namespace SIPSorcery.Net
         public MediaStreamTrack(
             AudioFormat format,
             MediaStreamStatusEnum streamStatus = MediaStreamStatusEnum.SendRecv) :
-            this(SDPMediaTypesEnum.audio, false,
-                new List<SDPAudioVideoMediaFormat> {new SDPAudioVideoMediaFormat(format)}, streamStatus)
-        {
-        }
+            this(SDPMediaTypesEnum.audio, false, new List<SDPAudioVideoMediaFormat> { new SDPAudioVideoMediaFormat(format) }, streamStatus)
+        { }
 
         /// <summary>
         /// Add a local audio track.
@@ -155,12 +198,10 @@ namespace SIPSorcery.Net
         /// <param name="streamStatus">Optional. The stream status for the audio track, e.g. whether
         /// send and receive or only one of.</param>
         public MediaStreamTrack(
-            List<AudioFormat> formats,
-            MediaStreamStatusEnum streamStatus = MediaStreamStatusEnum.SendRecv) :
-            this(SDPMediaTypesEnum.audio, false, formats.Select(x => new SDPAudioVideoMediaFormat(x)).ToList(),
-                streamStatus)
-        {
-        }
+        List<AudioFormat> formats,
+        MediaStreamStatusEnum streamStatus = MediaStreamStatusEnum.SendRecv) :
+             this(SDPMediaTypesEnum.audio, false, formats.Select(x => new SDPAudioVideoMediaFormat(x)).ToList(), streamStatus)
+        { }
 
         /// <summary>
         /// Add a local video track.
@@ -169,12 +210,10 @@ namespace SIPSorcery.Net
         /// <param name="streamStatus">Optional. The stream status for the video track, e.g. whether
         /// send and receive or only one of.</param>
         public MediaStreamTrack(
-            VideoFormat format,
-            MediaStreamStatusEnum streamStatus = MediaStreamStatusEnum.SendRecv) :
-            this(SDPMediaTypesEnum.video, false,
-                new List<SDPAudioVideoMediaFormat> {new SDPAudioVideoMediaFormat(format)}, streamStatus)
-        {
-        }
+           VideoFormat format,
+           MediaStreamStatusEnum streamStatus = MediaStreamStatusEnum.SendRecv) :
+            this(SDPMediaTypesEnum.video, false, new List<SDPAudioVideoMediaFormat> { new SDPAudioVideoMediaFormat(format) }, streamStatus)
+        { }
 
         /// <summary>
         /// Add a local video track.
@@ -183,12 +222,10 @@ namespace SIPSorcery.Net
         /// <param name="streamStatus">Optional. The stream status for the video track, e.g. whether
         /// send and receive or only one of.</param>
         public MediaStreamTrack(
-            List<VideoFormat> formats,
-            MediaStreamStatusEnum streamStatus = MediaStreamStatusEnum.SendRecv) :
-            this(SDPMediaTypesEnum.video, false, formats.Select(x => new SDPAudioVideoMediaFormat(x)).ToList(),
-                streamStatus)
-        {
-        }
+        List<VideoFormat> formats,
+        MediaStreamStatusEnum streamStatus = MediaStreamStatusEnum.SendRecv) :
+             this(SDPMediaTypesEnum.video, false, formats.Select(x => new SDPAudioVideoMediaFormat(x)).ToList(), streamStatus)
+        { }
 
         /// <summary>
         /// Adds a local audio track based on one or more well known audio formats.
@@ -198,8 +235,7 @@ namespace SIPSorcery.Net
         /// <param name="wellKnownAudioFormats">One or more well known audio formats.</param>
         public MediaStreamTrack(params SDPWellKnownMediaFormatsEnum[] wellKnownAudioFormats)
             : this(wellKnownAudioFormats.Select(x => new AudioFormat(x)).ToList())
-        {
-        }
+        { }
 
         /// <summary>
         /// Checks whether the payload ID in an RTP packet received from the remote call party
@@ -221,6 +257,39 @@ namespace SIPSorcery.Net
         public bool IsSsrcMatch(uint ssrc)
         {
             return ssrc == Ssrc || SdpSsrc.ContainsKey(ssrc);
+        }
+
+        /// <summary>
+        /// Gets the matching audio or video format for a payload ID.
+        /// </summary>
+        /// <param name="payloadID">The payload ID to get the format for.</param>
+        /// <returns>An audio or video format or null if no payload ID matched.</returns>
+        public SDPAudioVideoMediaFormat? GetFormatForPayloadID(int payloadID)
+        {
+            return Capabilities?.FirstOrDefault(x => x.ID == payloadID);
+        }
+
+        /// <summary>
+        /// Returns the next SeqNum to be used in the RTP Sequence Number header field for media packets
+        /// sent using this media stream. 
+        /// </summary>
+        /// <returns></returns>
+        public ushort GetNextSeqNum()
+        {
+            var actualSeqNum = m_seqNum;
+            int expectedSeqNum;
+            int attempts = 0;
+            do
+            {
+                if (++attempts > 10)
+                {
+                    throw new ApplicationException("GetNextSeqNum did not return an the next SeqNum due to concurrent updates from other threads within 10 attempts.");
+                }
+                expectedSeqNum = actualSeqNum;
+                int nextSeqNum = (actualSeqNum >= UInt16.MaxValue) ? (ushort)0 : (ushort)(actualSeqNum + 1);
+                actualSeqNum = Interlocked.CompareExchange(ref m_seqNum, nextSeqNum, expectedSeqNum);
+            } while (expectedSeqNum != actualSeqNum); // Try as long as compare-exchange was not successful; in most cases, only one iteration should be needed
+            return (ushort)expectedSeqNum;
         }
     }
 }

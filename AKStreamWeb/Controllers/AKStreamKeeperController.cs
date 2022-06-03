@@ -2,8 +2,6 @@ using System.Collections.Generic;
 using AKStreamWeb.Attributes;
 using AKStreamWeb.Services;
 using LibCommon;
-using LibCommon.Structs;
-using LibCommon.Structs.WebRequest.AKStreamKeeper;
 using LibCommon.Structs.WebResponse.AKStreamKeeper;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -18,65 +16,19 @@ namespace AKStreamWeb.Controllers
     public class AKStreamKeeperController : ControllerBase
     {
         /// <summary>
-        /// 添加一个裁剪合并任务
+        /// 获取ffmpeg模板列表
         /// </summary>
         /// <param name="AccessKey"></param>
-        /// <param name="mediaServerId"></param>
-        /// <param name="reqKeeper"></param>
+        /// <param name="mediaServerId">流媒体服务器id</param>
         /// <returns></returns>
         /// <exception cref="AkStreamException"></exception>
-        [Route("AddCutOrMergeTask")]
-        [HttpPost]
-        public ResKeeperCutMergeTaskResponse AddCutOrMergeTask(
-            [FromHeader(Name = "AccessKey")] string AccessKey, string mediaServerId, ReqKeeperCutMergeTask reqKeeper)
-        {
-            ResponseStruct rs;
-            var ret = AKStreamKeeperService.AddCutOrMergeTask(mediaServerId, reqKeeper, out rs);
-            if (!rs.Code.Equals(ErrorNumber.None))
-            {
-                throw new AkStreamException(rs);
-            }
-
-            return ret;
-        }
-
-        /// <summary>
-        /// 获取裁剪合并任务状态
-        /// </summary>
-        /// <param name="AccessKey"></param>
-        /// <param name="mediaServerId"></param>
-        /// <param name="taskId"></param>
-        /// <returns></returns>
-        /// <exception cref="AkStreamException"></exception>
-        [Route("GetMergeTaskStatus")]
+        [Route("GetFFmpegTemplateList")]
         [HttpGet]
-        public ResKeeperCutMergeTaskStatusResponse GetMergeTaskStatus(
-            [FromHeader(Name = "AccessKey")] string AccessKey, string mediaServerId, string taskId)
-        {
-            ResponseStruct rs;
-            var ret = AKStreamKeeperService.GetMergeTaskStatus(mediaServerId, taskId, out rs);
-            if (!rs.Code.Equals(ErrorNumber.None))
-            {
-                throw new AkStreamException(rs);
-            }
-
-            return ret;
-        }
-
-        /// <summary>
-        /// 获取裁剪合并任务积压列表
-        /// </summary>
-        /// <param name="AccessKey"></param>
-        /// <param name="mediaServerId"></param>
-        /// <returns></returns>
-        /// <exception cref="AkStreamException"></exception>
-        [Route("GetBacklogTaskList")]
-        [HttpGet]
-        public ResKeeperCutMergeTaskStatusResponseList GetBacklogTaskList(
+        public List<KeyValuePair<string, string>> GetFFmpegTemplateList(
             [FromHeader(Name = "AccessKey")] string AccessKey, string mediaServerId)
         {
             ResponseStruct rs;
-            var ret = AKStreamKeeperService.GetBacklogTaskList(mediaServerId, out rs);
+            var ret = AKStreamKeeperService.GetFFmpegTemplateList(mediaServerId, out rs);
             if (!rs.Code.Equals(ErrorNumber.None))
             {
                 throw new AkStreamException(rs);
@@ -85,6 +37,101 @@ namespace AKStreamWeb.Controllers
             return ret;
         }
 
+        /// <summary>
+        /// 删除ffmpeg模板
+        /// </summary>
+        /// <param name="AccessKey"></param>
+        /// <param name="mediaServerId">流媒体服务器id</param>
+        /// <param name="templateName">模板名称</param>
+        /// <returns></returns>
+        /// <exception cref="AkStreamException"></exception>
+        [Route("DelFFmpegTemplate")]
+        [HttpGet]
+        public bool DelFFmpegTemplate([FromHeader(Name = "AccessKey")] string AccessKey, string mediaServerId,
+            string templateName)
+        {
+            ResponseStruct rs;
+            var ret = AKStreamKeeperService.DelFFmpegTemplate(mediaServerId, templateName, out rs);
+            if (!rs.Code.Equals(ErrorNumber.None))
+            {
+                throw new AkStreamException(rs);
+            }
+
+            return ret;
+        }
+
+
+        /// <summary>
+        /// 修改ffmpeg模板
+        /// </summary>
+        /// <param name="AccessKey"></param>
+        /// <param name="mediaServerId">流媒体服务器id</param>
+        /// <param name="templateName">模板名称</param>
+        /// <param name="templateValue">模板命令（ffmpeg命令）</param>
+        /// <returns></returns>
+        /// <exception cref="AkStreamException"></exception>
+        [Route("ModifyFFmpegTemplate")]
+        [HttpGet]
+        public bool ModifyFFmpegTemplate([FromHeader(Name = "AccessKey")] string AccessKey, string mediaServerId,
+            string templateName,
+            string templateValue)
+        {
+            ResponseStruct rs;
+            var ret = AKStreamKeeperService.ModifyFFmpegTemplate(mediaServerId, templateName, templateValue, out rs);
+            if (!rs.Code.Equals(ErrorNumber.None))
+            {
+                throw new AkStreamException(rs);
+            }
+
+            return ret;
+        }
+
+        /// <summary>
+        /// 添加ffmpeg模板
+        /// </summary>
+        /// <param name="AccessKey"></param>
+        /// <param name="mediaServerId">流媒体服务器id</param>
+        /// <param name="templateName">模板名称</param>
+        /// <param name="templateValue">模板命令（ffmpeg命令）</param>
+        /// <returns></returns>
+        /// <exception cref="AkStreamException"></exception>
+        [Route("AddFFmpegTemplate")]
+        [HttpGet]
+        public bool AddFFmpegTemplate([FromHeader(Name = "AccessKey")] string AccessKey, string mediaServerId,
+            string templateName,
+            string templateValue)
+        {
+            ResponseStruct rs;
+            var ret = AKStreamKeeperService.AddFFmpegTemplate(mediaServerId, templateName, templateValue, out rs);
+            if (!rs.Code.Equals(ErrorNumber.None))
+            {
+                throw new AkStreamException(rs);
+            }
+
+            return ret;
+        }
+
+        /// <summary>
+        /// 获取Keeper程序版本
+        /// </summary>
+        /// <param name="AccessKey"></param>
+        /// <param name="mediaServerId"></param>
+        /// <returns></returns>
+        /// <exception cref="AkStreamException"></exception>
+        [Route("GetVersion")]
+        [HttpGet]
+        public string GetVersion(
+            [FromHeader(Name = "AccessKey")] string AccessKey, string mediaServerId)
+        {
+            ResponseStruct rs;
+            var ret = AKStreamKeeperService.GetVersion(mediaServerId, out rs);
+            if (!rs.Code.Equals(ErrorNumber.None))
+            {
+                throw new AkStreamException(rs);
+            }
+
+            return ret;
+        }
 
         /// <summary>
         /// 获取一个可用的rtp端口（偶数端口）
@@ -110,6 +157,77 @@ namespace AKStreamWeb.Controllers
             return ret;
         }
 
+
+        /// <summary>
+        /// 获取一个可用的rtp(发送)端口（偶数端口）
+        /// </summary>
+        /// <param name="AccessKey"></param>
+        /// <param name="mediaServerId"></param>
+        /// <param name="min"></param>
+        /// <param name="max"></param>
+        /// <returns></returns>
+        /// <exception cref="AkStreamException"></exception>
+        [Route("GuessAnRtpPortForSender")]
+        [HttpGet]
+        public ushort GuessAnRtpPortForSender(
+            [FromHeader(Name = "AccessKey")] string AccessKey, string mediaServerId, ushort? min = 0, ushort? max = 0)
+        {
+            ResponseStruct rs;
+            var ret = AKStreamKeeperService.GuessAnRtpPortForSender(mediaServerId, out rs, min, max);
+            if (!rs.Code.Equals(ErrorNumber.None))
+            {
+                throw new AkStreamException(rs);
+            }
+
+            return ret;
+        }
+
+
+        /// <summary>
+        /// 释放rtp端口
+        /// </summary>
+        /// <param name="AccessKey"></param>
+        /// <param name="mediaServerId"></param>
+        /// <param name="port"></param>
+        /// <returns></returns>
+        /// <exception cref="AkStreamException"></exception>
+        [Route("ReleaseRtpPort")]
+        [HttpGet]
+        public bool ReleaseRtpPort(
+            [FromHeader(Name = "AccessKey")] string AccessKey, string mediaServerId, ushort port)
+        {
+            ResponseStruct rs;
+            var ret = AKStreamKeeperService.ReleaseRtpPort(mediaServerId, port, out rs);
+            if (!rs.Code.Equals(ErrorNumber.None))
+            {
+                throw new AkStreamException(rs);
+            }
+
+            return ret;
+        }
+
+        /// <summary>
+        /// 释放rtp(发送)端口
+        /// </summary>
+        /// <param name="AccessKey"></param>
+        /// <param name="mediaServerId"></param>
+        /// <param name="port"></param>
+        /// <returns></returns>
+        /// <exception cref="AkStreamException"></exception>
+        [Route("ReleaseRtpPortForSender")]
+        [HttpGet]
+        public bool ReleaseRtpPortForSender(
+            [FromHeader(Name = "AccessKey")] string AccessKey, string mediaServerId, ushort port)
+        {
+            ResponseStruct rs;
+            var ret = AKStreamKeeperService.ReleaseRtpPortForSender(mediaServerId, port, out rs);
+            if (!rs.Code.Equals(ErrorNumber.None))
+            {
+                throw new AkStreamException(rs);
+            }
+
+            return ret;
+        }
 
         /// <summary>
         /// 删除一个指定文件

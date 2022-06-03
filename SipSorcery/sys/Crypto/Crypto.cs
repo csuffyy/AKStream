@@ -20,71 +20,41 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Threading;
 using Microsoft.Extensions.Logging;
 
 namespace SIPSorcery.Sys
 {
     public class Crypto
     {
-        public const int DEFAULT_RANDOM_LENGTH = 10; // Number of digits to return for default random numbers.
+        // TODO: When .NET Standard and Framework support are deprecated these pragmas can be removed.
+#pragma warning disable SYSLIB0001
+#pragma warning disable SYSLIB0021
+#pragma warning disable SYSLIB0023
+
+        public const int DEFAULT_RANDOM_LENGTH = 10;    // Number of digits to return for default random numbers.
         public const int AES_KEY_SIZE = 32;
         public const int AES_IV_SIZE = 16;
         private const string CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
         private static ILogger logger = Log.Logger;
 
-        private static Random _rng = new Random();
+        static int seed = Environment.TickCount;
+
+        static readonly ThreadLocal<Random> random =
+            new ThreadLocal<Random>(() => new Random(Interlocked.Increment(ref seed)));
+
+        public static int Rand()
+        {
+            return random.Value.Next();
+        }
+
+        public static int Rand(int maxValue)
+        {
+            return random.Value.Next(maxValue);
+        }
+
         private static RNGCryptoServiceProvider m_randomProvider = new RNGCryptoServiceProvider();
-
-        //public static string RSAEncrypt(string xmlKey, string plainText)
-        //{
-        //    return Convert.ToBase64String(RSAEncryptRaw(xmlKey, plainText));
-        //}
-
-        //public static byte[] RSAEncryptRaw(string xmlKey, string plainText)
-        //{
-        //    try
-        //    {
-        //        RSACryptoServiceProvider key = GetRSAProvider(xmlKey);
-
-        //        return key.Encrypt(Encoding.ASCII.GetBytes(plainText), true);
-        //    }
-        //    catch (Exception excp)
-        //    {
-        //        logger.LogError("Exception RSAEncrypt. " + excp.Message);
-        //        throw;
-        //    }
-        //}
-
-        //public static string RSADecrypt(string xmlKey, string cypherText)
-        //{
-        //    return Encoding.ASCII.GetString(RSADecryptRaw(xmlKey, Convert.FromBase64String((cypherText))));
-        //}
-
-        //public static byte[] RSADecryptRaw(string xmlKey, byte[] cypher)
-        //{
-        //    try
-        //    {
-        //        RSACryptoServiceProvider key = GetRSAProvider(xmlKey);
-
-        //        return key.Decrypt(cypher, true);
-        //    }
-        //    catch (Exception excp)
-        //    {
-        //        logger.LogError("Exception RSADecrypt. " + excp.Message);
-        //        throw;
-        //    }
-        //}
-
-        //public static RSACryptoServiceProvider GetRSAProvider(string xmlKey)
-        //{
-        //    CspParameters cspParam = new CspParameters();
-        //    cspParam.Flags = CspProviderFlags.UseMachineKeyStore;
-        //    RSACryptoServiceProvider key = new RSACryptoServiceProvider(cspParam);
-        //    key.FromXmlString(xmlKey);
-
-        //    return key;
-        //}
 
         public static string SymmetricEncrypt(string key, string iv, string plainText)
         {
@@ -112,8 +82,7 @@ namespace SIPSorcery.Sys
             }
 
             AesManaged aes = new AesManaged();
-            ICryptoTransform encryptor = aes.CreateEncryptor(GetFixedLengthByteArray(key, AES_KEY_SIZE),
-                GetFixedLengthByteArray(iv, AES_IV_SIZE));
+            ICryptoTransform encryptor = aes.CreateEncryptor(GetFixedLengthByteArray(key, AES_KEY_SIZE), GetFixedLengthByteArray(iv, AES_IV_SIZE));
 
             MemoryStream resultStream = new MemoryStream();
             CryptoStream cryptoStream = new CryptoStream(resultStream, encryptor, CryptoStreamMode.Write);
@@ -149,8 +118,7 @@ namespace SIPSorcery.Sys
             }
 
             AesManaged aes = new AesManaged();
-            ICryptoTransform encryptor = aes.CreateDecryptor(GetFixedLengthByteArray(key, AES_KEY_SIZE),
-                GetFixedLengthByteArray(iv, AES_IV_SIZE));
+            ICryptoTransform encryptor = aes.CreateDecryptor(GetFixedLengthByteArray(key, AES_KEY_SIZE), GetFixedLengthByteArray(iv, AES_IV_SIZE));
 
             MemoryStream cipherStream = new MemoryStream(cipherBytes);
             CryptoStream cryptoStream = new CryptoStream(cipherStream, encryptor, CryptoStreamMode.Read);
@@ -181,9 +149,8 @@ namespace SIPSorcery.Sys
 
             for (int i = 0; i < length; i++)
             {
-                buffer[i] = CHARS[_rng.Next(CHARS.Length)];
+                buffer[i] = CHARS[Rand(CHARS.Length)];
             }
-
             return new string(buffer);
         }
 
@@ -220,6 +187,7 @@ namespace SIPSorcery.Sys
 
         public static Int32 GetRandomInt(Int32 minValue, Int32 maxValue)
         {
+
             if (minValue > maxValue)
             {
                 throw new ArgumentOutOfRangeException("minValue");
@@ -237,18 +205,15 @@ namespace SIPSorcery.Sys
                 m_randomProvider.GetBytes(uint32Buffer);
                 UInt32 rand = BitConverter.ToUInt32(uint32Buffer, 0);
 
-                Int64 max = (1 + (Int64) UInt32.MaxValue);
+                Int64 max = (1 + (Int64)UInt32.MaxValue);
                 Int64 remainder = max % diff;
                 if (rand <= max - remainder)
                 {
-                    return (Int32) (minValue + (rand % diff));
+                    return (Int32)(minValue + (rand % diff));
                 }
-
                 attempts++;
             }
-
-            throw new ApplicationException(
-                "GetRandomInt did not return an appropriate random number within 10 attempts.");
+            throw new ApplicationException("GetRandomInt did not return an appropriate random number within 10 attempts.");
         }
 
         public static UInt16 GetRandomUInt16()
@@ -258,18 +223,27 @@ namespace SIPSorcery.Sys
             return BitConverter.ToUInt16(uint16Buffer, 0);
         }
 
-        public static UInt32 GetRandomUInt()
+        public static UInt32 GetRandomUInt(bool noZero = false)
         {
             byte[] uint32Buffer = new byte[4];
             m_randomProvider.GetBytes(uint32Buffer);
-            return BitConverter.ToUInt32(uint32Buffer, 0);
+            var randomUint = BitConverter.ToUInt32(uint32Buffer, 0);
+
+            if(noZero && randomUint == 0)
+            {
+                m_randomProvider.GetBytes(uint32Buffer);
+                randomUint = BitConverter.ToUInt32(uint32Buffer, 0);
+            }
+
+            return randomUint;
         }
 
-        //public static string GetRandomString(int length)
-        //{
-        //    string randomStr = GetRandomInt(length).ToString();
-        //    return (randomStr.Length > length) ? randomStr.Substring(0, length) : randomStr;
-        //}
+        public static UInt64 GetRandomULong()
+        {
+            byte[] uint64Buffer = new byte[8];
+            m_randomProvider.GetBytes(uint64Buffer);
+            return BitConverter.ToUInt64(uint64Buffer, 0);
+        }
 
         public static byte[] createRandomSalt(int length)
         {
@@ -295,7 +269,7 @@ namespace SIPSorcery.Sys
 
             // Buffer to read in plain text blocks.
             byte[] fileBuffer = new byte[fileStream.Length];
-            fileStream.Read(fileBuffer, 0, (int) fileStream.Length);
+            fileStream.Read(fileBuffer, 0, (int)fileStream.Length);
             fileStream.Close();
 
             byte[] overallHash = shaM.ComputeHash(fileBuffer);
@@ -362,7 +336,6 @@ namespace SIPSorcery.Sys
             {
                 plainText += value;
             }
-
             return sha.ComputeHash(Encoding.UTF8.GetBytes(plainText));
         }
 
@@ -386,6 +359,19 @@ namespace SIPSorcery.Sys
         }
 
         /// <summary>
+        /// Gets the HSA256 hash of an arbitrary buffer.
+        /// </summary>
+        /// <param name="buffer">The buffer to hash.</param>
+        /// <returns>A hex string representing the hashed buffer.</returns>
+        public static string GetSHA256Hash(byte[] buffer)
+        {
+            using(SHA256Managed sha256 = new SHA256Managed())
+            {
+                return sha256.ComputeHash(buffer).HexStr();
+            }
+        }
+
+        /// <summary>
         /// Attempts to load an X509 certificate from a Windows OS certificate store.
         /// </summary>
         /// <param name="storeLocation">The certificate store to load from, can be CurrentUser or LocalMachine.</param>
@@ -393,28 +379,28 @@ namespace SIPSorcery.Sys
         /// <param name="checkValidity">Checks if the certificate is current and has a verifiable certificate issuer list. Should be
         /// set to false for self issued certificates.</param>
         /// <returns>A certificate object if the load is successful otherwise null.</returns>
-        public static X509Certificate2 LoadCertificate(StoreLocation storeLocation, string certificateSubject,
-            bool checkValidity)
+        public static X509Certificate2 LoadCertificate(StoreLocation storeLocation, string certificateSubject, bool checkValidity)
         {
             X509Store store = new X509Store(storeLocation);
             logger.LogDebug("Certificate store " + store.Location + " opened");
             store.Open(OpenFlags.OpenExistingOnly);
-            X509Certificate2Collection collection =
-                store.Certificates.Find(X509FindType.FindBySubjectName, certificateSubject, checkValidity);
+            X509Certificate2Collection collection = store.Certificates.Find(X509FindType.FindBySubjectName, certificateSubject, checkValidity);
             if (collection != null && collection.Count > 0)
             {
                 X509Certificate2 serverCertificate = collection[0];
                 bool verifyCert = serverCertificate.Verify();
-                logger.LogDebug("X509 certificate loaded from current user store, subject=" +
-                                serverCertificate.Subject + ", valid=" + verifyCert + ".");
+                logger.LogDebug("X509 certificate loaded from current user store, subject=" + serverCertificate.Subject + ", valid=" + verifyCert + ".");
                 return serverCertificate;
             }
             else
             {
-                logger.LogWarning("X509 certificate with subject name=" + certificateSubject + ", not found in " +
-                                  store.Location + " store.");
+                logger.LogWarning("X509 certificate with subject name=" + certificateSubject + ", not found in " + store.Location + " store.");
                 return null;
             }
         }
     }
+
+#pragma warning restore SYSLIB0001
+#pragma warning restore SYSLIB0021
+#pragma warning restore SYSLIB0023
 }

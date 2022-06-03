@@ -18,6 +18,17 @@ using TinyJson;
 namespace SIPSorcery.Net
 {
     /// <summary>
+    /// The ICE set up roles that a peer can be in. The role determines how the DTLS
+    /// handshake is performed, i.e. which peer is the client and which is the server.
+    /// </summary>
+    public enum IceRolesEnum
+    {
+        actpass = 0,
+        passive = 1,
+        active = 2
+    }
+
+    /// <summary>
     /// The gathering states an ICE session transitions through.
     /// </summary>
     /// <remarks>
@@ -77,7 +88,7 @@ namespace SIPSorcery.Net
     }
 
     /// <summary>
-    /// Properties to influence the initialisation of an ICE candidate.
+    /// Represents an ICE candidate and associated properties that link it to the SDP.
     /// </summary>
     /// <remarks>
     /// As specified in https://www.w3.org/TR/webrtc/#dom-rtcicecandidateinit.
@@ -117,8 +128,8 @@ namespace SIPSorcery.Net
 
                 // To qualify as parsed all required fields must be set.
                 return init != null &&
-                       init.candidate != null &&
-                       init.sdpMid != null;
+                init.candidate != null &&
+                init.sdpMid != null;
             }
         }
     }
@@ -229,9 +240,7 @@ namespace SIPSorcery.Net
         RTCIceTcpCandidateType tcpType { get; }
         string relatedAddress { get; }
         ushort relatedPort { get; }
-
         string usernameFragment { get; }
-
         //RTCIceCandidateInit toJSON();
         string toJSON();
     }

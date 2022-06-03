@@ -1,13 +1,12 @@
 using System.Collections.Generic;
-using System.Threading.Channels;
 using AKStreamWeb.Attributes;
 using AKStreamWeb.Services;
 using LibCommon;
 using LibCommon.Structs;
 using LibCommon.Structs.GB28181;
+using LibCommon.Structs.WebRequest;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
-
 
 namespace AKStreamWeb.Controllers
 {
@@ -18,21 +17,142 @@ namespace AKStreamWeb.Controllers
     [SwaggerTag("Sip网关相关接口")]
     public class SipServerController : ControllerBase
     {
+        
+     
+      
+        
         /// <summary>
-        /// 获取Sip通道的流媒体相关信息
+        /// 终止回放流
+        /// </summary>
+        /// <param name="AccessKey"></param>
+        /// <param name="record"></param>
+        /// <returns></returns>
+        /// <exception cref="AkStreamException"></exception>
+        [Route("HistroyStopVideo")]
+        [HttpGet]
+        public bool HistroyStopVideo(
+            [FromHeader(Name = "AccessKey")] string AccessKey, int taskId, string ssrcId)
+        {
+            ResponseStruct rs;
+            var ret = SipServerService.StopLiveVideo(taskId, ssrcId, out rs);
+            if (!rs.Code.Equals(ErrorNumber.None))
+            {
+                throw new AkStreamException(rs);
+            }
+
+            return ret;
+        }
+
+
+        /// <summary>
+        /// 请求回放流
+        /// </summary>
+        /// <param name="AccessKey"></param>
+        /// <param name="record"></param>
+        /// <returns></returns>
+        /// <exception cref="AkStreamException"></exception>
+        [Route("HistroyVideo")]
+        [HttpGet]
+        public MediaServerStreamInfo HistroyVideo(
+            [FromHeader(Name = "AccessKey")] string AccessKey, int taskId, string ssrcId)
+        {
+            ResponseStruct rs;
+            var ret = SipServerService.LiveVideo(taskId, ssrcId, out rs);
+            if (!rs.Code.Equals(ErrorNumber.None))
+            {
+                throw new AkStreamException(rs);
+            }
+
+            return ret;
+        }
+
+        /// <summary>
+        /// 回放录像时拖动（seek position）
+        /// </summary>
+        /// <param name="AccessKey"></param>
+        /// <param name="taskId"></param>
+        /// <param name="ssrcId"></param>
+        /// <param name="time"></param>
+        /// <returns></returns>
+        /// <exception cref="AkStreamException"></exception>
+        [Route("HistroyVideoPosition")]
+        [HttpGet]
+        public bool HistroyVideoPosition(
+            [FromHeader(Name = "AccessKey")] string AccessKey, int taskId, uint ssrcId, long time)
+        {
+            ResponseStruct rs;
+            var ret = SipServerService.RecordVideoSeekPosition(taskId, ssrcId, time, out rs);
+            if (!rs.Code.Equals(ErrorNumber.None))
+            {
+                throw new AkStreamException(rs);
+            }
+
+            return ret;
+        }
+
+        /// <summary>
+        /// 获取回放文件列表状态
+        /// </summary>
+        /// <param name="AccessKey"></param>
+        /// <param name="taskId"></param>
+        /// <returns></returns>
+        /// <exception cref="AkStreamException"></exception>
+        [Route("GetHistroyRecordFileStatus")]
+        [HttpGet]
+        public VideoChannelRecordInfo GetHistroyRecordFileStatus(
+            [FromHeader(Name = "AccessKey")] string AccessKey, int taskId)
+        {
+            ResponseStruct rs;
+            var ret = SipServerService.GetHistroyRecordFileStatus(taskId, out rs);
+            if (!rs.Code.Equals(ErrorNumber.None))
+            {
+                throw new AkStreamException(rs);
+            }
+
+            return ret;
+        }
+
+
+        /// <summary>
+        /// 获取历史录像列表
         /// </summary>
         /// <param name="AccessKey"></param>
         /// <param name="deviceId"></param>
         /// <param name="channelId"></param>
+        /// <param name="queryRecordFile"></param>
         /// <returns></returns>
         /// <exception cref="AkStreamException"></exception>
-        [Route("GetSipChannelMediaServerStreamInfo")]
-        [HttpGet]
-        public MediaServerStreamInfo GetSipChannelMediaServerStreamInfo(
-            [FromHeader(Name = "AccessKey")] string AccessKey, string deviceId, string channelId)
+        [Route("GetHistroyRecordFileList")]
+        [HttpPost]
+        public int GetHistroyRecordFileList(
+            [FromHeader(Name = "AccessKey")] string AccessKey, string deviceId, string channelId,
+            SipQueryRecordFile queryRecordFile)
         {
             ResponseStruct rs;
-            var ret = SipServerService.GetSipChannelMediaServerStreamInfo(deviceId, channelId, out rs);
+            var ret = SipServerService.GetHistroyRecordFileList(deviceId, channelId, queryRecordFile, out rs);
+            if (!rs.Code.Equals(ErrorNumber.None))
+            {
+                throw new AkStreamException(rs);
+            }
+
+            return ret;
+        }
+
+
+        /// <summary>
+        /// ptz控制接口
+        /// </summary>
+        /// <param name="AccessKey"></param>
+        /// <param name="ptzCmd"></param>
+        /// <returns></returns>
+        /// <exception cref="AkStreamException"></exception>
+        [Route("PtzCtrl")]
+        [HttpPost]
+        public bool PtzCtrl(
+            [FromHeader(Name = "AccessKey")] string AccessKey, ReqPtzCtrl ptzCmd)
+        {
+            ResponseStruct rs;
+            var ret = SipServerService.PtzCtrl(ptzCmd, out rs);
             if (!rs.Code.Equals(ErrorNumber.None))
             {
                 throw new AkStreamException(rs);

@@ -11,9 +11,9 @@ namespace LibCommon
     public class ResponseStruct
     {
         private ErrorNumber _code;
-        private string _message = null!;
         private string? _exceptMessage = null!;
         private string? _exceptStackTrace = null!;
+        private string _message = null!;
 
 
         /// <summary>
@@ -67,6 +67,11 @@ namespace LibCommon
         {
             get => _exceptStackTrace;
             set => _exceptStackTrace = value;
+        }
+
+        public override string ToString()
+        {
+            return $"{nameof(Code)}: {Code}, {nameof(Message)}: {Message}, {nameof(ExceptMessage)}: {ExceptMessage}, {nameof(ExceptStackTrace)}: {ExceptStackTrace}";
         }
     }
 }

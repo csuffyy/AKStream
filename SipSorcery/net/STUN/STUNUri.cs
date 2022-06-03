@@ -42,8 +42,7 @@ namespace SIPSorcery.Net
                 case STUNSchemesEnum.turns:
                     return DEFAULT_TURN_TLS_PORT;
                 default:
-                    throw new ApplicationException(
-                        "STUN or TURN scheme not recognised in STUNConstants.GetPortForScheme.");
+                    throw new ApplicationException("STUN or TURN scheme not recognised in STUNConstants.GetPortForScheme.");
             }
         }
     }
@@ -66,17 +65,14 @@ namespace SIPSorcery.Net
         /// User Datagram Protocol.
         /// </summary>
         udp = 1,
-
         /// <summary>.
         /// Transmission Control Protocol
         /// </summary>
         tcp = 2,
-
         /// <summary>
         /// Transport Layer Security.
         /// </summary>
         tls = 3,
-
         /// <summary>
         /// Transport Layer Security over UDP.
         /// </summary>
@@ -122,8 +118,7 @@ namespace SIPSorcery.Net
         }
 
         private STUNUri()
-        {
-        }
+        { }
 
         public STUNUri(STUNSchemesEnum scheme, string host, int port = STUNConstants.DEFAULT_STUN_PORT)
         {
@@ -157,8 +152,7 @@ namespace SIPSorcery.Net
                     }
                     else
                     {
-                        if (!Enum.TryParse<STUNSchemesEnum>(schemeStr.Substring(0, colonPosn), true,
-                            out stunUri.Scheme))
+                        if (!Enum.TryParse<STUNSchemesEnum>(schemeStr.Substring(0, colonPosn), true, out stunUri.Scheme))
                         {
                             stunUri.Scheme = DefaultSTUNScheme;
                         }
@@ -239,7 +233,7 @@ namespace SIPSorcery.Net
 
         public override bool Equals(object obj)
         {
-            return AreEqual(this, (STUNUri) obj);
+            return AreEqual(this, (STUNUri)obj);
         }
 
         public static bool operator ==(STUNUri uri1, STUNUri uri2)
@@ -284,10 +278,10 @@ namespace SIPSorcery.Net
         public override int GetHashCode()
         {
             return Scheme.GetHashCode()
-                   + Transport.GetHashCode()
-                   + ((Host != null) ? Host.GetHashCode() : 0)
-                   + Port
-                   + ((ExplicitPort) ? 1 : 0);
+                + Transport.GetHashCode()
+                + ((Host != null) ? Host.GetHashCode() : 0)
+                + Port
+                + ((ExplicitPort) ? 1 : 0);
         }
     }
 }

@@ -10,13 +10,11 @@ namespace LibSystemInfo
     {
         private static object lockObj = new object();
 
-        public static NetWorkStat GetNetworkStat()
-        {
-            lock (lockObj)
-            {
-                return NetWorkStat;
-            }
-        }
+        private static ProcessHelper SystemInfoProcessHelper =
+            new ProcessHelper(p_StdOutputDataReceived, null!, p_Process_Exited!);
+
+
+        public static NetWorkStat NetWorkStat = new NetWorkStat();
 
         static NetWorkMacValue()
         {
@@ -75,11 +73,13 @@ namespace LibSystemInfo
             }
         }
 
-        private static ProcessHelper SystemInfoProcessHelper =
-            new ProcessHelper(p_StdOutputDataReceived, null!, p_Process_Exited!);
-
-
-        public static NetWorkStat NetWorkStat = new NetWorkStat();
+        public static NetWorkStat GetNetworkStat()
+        {
+            lock (lockObj)
+            {
+                return NetWorkStat;
+            }
+        }
 
         private static void p_Process_Exited(object sender, EventArgs e)
         {
@@ -92,13 +92,14 @@ namespace LibSystemInfo
             {
                 if (e.Data.Contains("Networks: packets:"))
                 {
+                    bool b = false;
                     string tmpStr = e.Data;
                     tmpStr = tmpStr.Replace("Networks: packets:", "");
                     string[] tmpStrArr = tmpStr.Split(',', StringSplitOptions.RemoveEmptyEntries);
                     if (tmpStrArr.Length == 2)
                     {
-                        long tmpRecvBytes = 0;
-                        long tmpSendBytes = 0;
+                        ulong tmpRecvBytes = 0;
+                        ulong tmpSendBytes = 0;
                         foreach (var str in tmpStrArr)
                         {
                             if (str.ToUpper().Contains("IN"))
@@ -108,17 +109,18 @@ namespace LibSystemInfo
                                 s1 = s1.Substring(s1.IndexOf('/') + 1);
                                 string s2 = s1.Substring(0, s1.Length - 1);
                                 string s3 = s1.Substring(s1.Length - 1);
+
                                 switch (s3)
                                 {
                                     case "B":
-                                        long.TryParse(s2, out tmpRecvBytes);
+                                        b = ulong.TryParse(s2, out tmpRecvBytes);
                                         break;
                                     case "K":
-                                        long.TryParse(s2, out tmpRecvBytes);
+                                        b = ulong.TryParse(s2, out tmpRecvBytes);
                                         tmpRecvBytes = tmpRecvBytes * 1024;
                                         break;
                                     case "M":
-                                        long.TryParse(s2, out tmpRecvBytes);
+                                        b = ulong.TryParse(s2, out tmpRecvBytes);
                                         tmpRecvBytes = tmpRecvBytes * 1024 * 1024;
                                         break;
                                 }
@@ -134,27 +136,30 @@ namespace LibSystemInfo
                                 switch (s3)
                                 {
                                     case "B":
-                                        long.TryParse(s2, out tmpSendBytes);
+                                        b = ulong.TryParse(s2, out tmpSendBytes);
                                         break;
                                     case "K":
-                                        long.TryParse(s2, out tmpSendBytes);
+                                        b = ulong.TryParse(s2, out tmpSendBytes);
                                         tmpSendBytes = tmpSendBytes * 1024;
                                         break;
                                     case "M":
-                                        long.TryParse(s2, out tmpSendBytes);
+                                        b = ulong.TryParse(s2, out tmpSendBytes);
                                         tmpSendBytes = tmpSendBytes * 1024 * 1024;
                                         break;
                                 }
                             }
                         }
 
-                        lock (lockObj)
+                        if (b)
                         {
-                            NetWorkStat.TotalRecvBytes += tmpRecvBytes;
-                            NetWorkStat.TotalSendBytes += tmpSendBytes;
-                            NetWorkStat.CurrentRecvBytes = tmpRecvBytes;
-                            NetWorkStat.CurrentSendBytes = tmpSendBytes;
-                            NetWorkStat.UpdateTime = DateTime.Now;
+                            lock (lockObj)
+                            {
+                                NetWorkStat.TotalRecvBytes += tmpRecvBytes;
+                                NetWorkStat.TotalSendBytes += tmpSendBytes;
+                                NetWorkStat.CurrentRecvBytes = tmpRecvBytes;
+                                NetWorkStat.CurrentSendBytes = tmpSendBytes;
+                                NetWorkStat.UpdateTime = DateTime.Now;
+                            }
                         }
                     }
                 }

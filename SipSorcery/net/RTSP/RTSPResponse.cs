@@ -54,12 +54,11 @@ namespace SIPSorcery.Net
         public IPEndPoint ReceivedFrom;
 
         private RTSPResponse()
-        {
-        }
+        { }
 
         public RTSPResponse(RTSPResponseStatusCodesEnum responseType, string reasonPhrase)
         {
-            StatusCode = (int) responseType;
+            StatusCode = (int)responseType;
             Status = responseType;
             ReasonPhrase = reasonPhrase;
             ReasonPhrase = responseType.ToString();
@@ -71,8 +70,7 @@ namespace SIPSorcery.Net
             return ParseRTSPResponse(rtspMessage, out dontCare);
         }
 
-        public static RTSPResponse ParseRTSPResponse(RTSPMessage rtspMessage,
-            out RTSPResponseParserError responseParserError)
+        public static RTSPResponse ParseRTSPResponse(RTSPMessage rtspMessage, out RTSPResponseParserError responseParserError)
         {
             responseParserError = RTSPResponseParserError.None;
 
@@ -109,8 +107,7 @@ namespace SIPSorcery.Net
                 string reasonPhrase = (!ReasonPhrase.IsNullOrBlank()) ? " " + ReasonPhrase : null;
 
                 string message =
-                    RTSPVersion + "/" + RTSPMajorVersion + "." + RTSPMinorVersion + " " + StatusCode + reasonPhrase +
-                    m_CRLF +
+                    RTSPVersion + "/" + RTSPMajorVersion + "." + RTSPMinorVersion + " " + StatusCode + reasonPhrase + m_CRLF +
                     this.Header.ToString();
 
                 if (Body != null)

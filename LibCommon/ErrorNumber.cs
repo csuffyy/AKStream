@@ -40,6 +40,10 @@ namespace LibCommon
         Sys_DB_RecordPlanNotExists = -1027, //录制计划不存在
         Sys_RecordPlanTimeLimitExcept = -1028, //录制计划时间间隔异常
         Sys_DB_RecordPlanAlreadyExists = -1029, //数据库中指定录制计划已经存在
+        Sys_DvrCutMergeTimeLimit = -1030, //裁剪时间限制，超过120分钟任务不允许执行
+        Sys_DvrCutMergeFileNotFound = -1031, //时间周期内没有找到相关视频文件
+        Sys_DvrCutProcessQueueLimit = -1032, //处理队列已满，请稍后再试
+        Sys_AutoResetEventExcept = -1033, //AutoResetEventExcept
         Sip_StartExcept = -2000, //启动Sip服务异常
         Sip_StopExcept = -2001, //停止Sip服务异常
         Sip_Except_DisposeSipDevice = -2002, //Sip网关内部异常(销毁Sip设备时)
@@ -54,6 +58,9 @@ namespace LibCommon
         Sip_NotOnPushStream = -2011, //Sip通道没有在推流状态
         Sip_Channel_StatusExcept = -2012, //Sip通道设备状态异常
         Sip_VideoLiveExcept = -2013, //Sip通道推流请求异常
+        Sip_CallBackExcept = -2014, //sip回调时异常
+        Sip_SipClient_InitExcept=-2015,//sip客户端启动异常
+        Sip_SipClient_ShareDeviceIdAlRedayExists=-2016,//SIP共享通道设备ID已经存在,ShareDeviceId不能重复
         MediaServer_WebApiExcept = -3000, //访问流媒体服务器WebApi时异常
         MediaServer_WebApiDataExcept = -3001, //访问流媒体服务器WebApi接口返回数据异常
         MediaServer_TimeExcept = -3002, //服务器时间异常，建议同步
@@ -70,6 +77,9 @@ namespace LibCommon
         MediaServer_StreamTypeExcept = -3013, //流类型不正确
         MediaServer_GetStreamTypeExcept = -3014, //指定拉流方法不正确
         MediaServer_VideoSrcExcept = -3015, //源流地址异常
+        MediaServer_InputObjectAlredayExists=-3016,//传入对象已经存在
+        MediaServer_ObjectNotExists=-3017,//对象不存在
+        
 
         Other = -6000 //其他异常
     }
@@ -116,6 +126,10 @@ namespace LibCommon
             ErrorDic[ErrorNumber.Sys_VideoChannelNotActived] = "音视频通道实例没有激活,或音视频通道数据库配置有异常，请激活并检查";
             ErrorDic[ErrorNumber.Sys_HttpClientTimeout] = "http客户端请求超时或服务不可达";
             ErrorDic[ErrorNumber.Sys_DB_RecordPlanAlreadyExists] = "数据库中指定录制计划已经存在";
+            ErrorDic[ErrorNumber.Sys_DvrCutMergeTimeLimit] = "裁剪时间限制，超过120分钟任务不允许执行";
+            ErrorDic[ErrorNumber.Sys_DvrCutMergeFileNotFound] = "时间周期内没有找到相关视频文件";
+            ErrorDic[ErrorNumber.Sys_DvrCutProcessQueueLimit] = "处理队列已满，请稍后再试";
+            ErrorDic[ErrorNumber.Sys_AutoResetEventExcept] = "异步等待元子异常";
             ErrorDic[ErrorNumber.Sip_StartExcept] = "启动Sip服务异常";
             ErrorDic[ErrorNumber.Sip_StopExcept] = "停止Sip服务异常";
             ErrorDic[ErrorNumber.Sip_Except_DisposeSipDevice] = "Sip网关内部异常(销毁Sip设备时)";
@@ -130,6 +144,9 @@ namespace LibCommon
             ErrorDic[ErrorNumber.Sip_NotOnPushStream] = "Sip通道(回放录像)没有在推流状态";
             ErrorDic[ErrorNumber.Sip_Channel_StatusExcept] = "Sip通道状态异常";
             ErrorDic[ErrorNumber.Sip_VideoLiveExcept] = "Sip通道推流请求异常";
+            ErrorDic[ErrorNumber.Sip_CallBackExcept] = "sip回调时异常";
+            ErrorDic[ErrorNumber.Sip_SipClient_InitExcept] = "sip客户端启动异常";
+            ErrorDic[ErrorNumber.Sip_SipClient_ShareDeviceIdAlRedayExists] = "sip共享通道设备ID已经存在";
             ErrorDic[ErrorNumber.MediaServer_WebApiExcept] = "访问流媒体服务器WebApi接口时异常";
             ErrorDic[ErrorNumber.MediaServer_WebApiDataExcept] = "访问流媒体服务器WebApi接口返回数据异常";
             ErrorDic[ErrorNumber.MediaServer_TimeExcept] = "流媒体服务器时间异常，建议同步";
@@ -146,7 +163,8 @@ namespace LibCommon
             ErrorDic[ErrorNumber.MediaServer_StreamTypeExcept] = "流类型不正确，GB28181Rtp流不能使用此功能拉流";
             ErrorDic[ErrorNumber.MediaServer_GetStreamTypeExcept] = "指定拉流方法不正确，请指定SelfMethod后再试";
             ErrorDic[ErrorNumber.MediaServer_VideoSrcExcept] = "源流地址异常，请检查数据库中VideoSrcUrl字段是否正确";
-
+            ErrorDic[ErrorNumber.MediaServer_InputObjectAlredayExists] = "传入对象已经存在";
+            ErrorDic[ErrorNumber.MediaServer_ObjectNotExists] = "指定对象不存在";
             ErrorDic[ErrorNumber.Other] = "未知错误";
         }
     }

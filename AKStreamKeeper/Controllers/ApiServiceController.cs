@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using AKStreamKeeper.Attributes;
 using AKStreamKeeper.Services;
 using LibCommon;
+using LibCommon.Structs;
 using LibCommon.Structs.WebResponse.AKStreamKeeper;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -15,6 +16,145 @@ namespace AKStreamKeeper.Controllers
     [SwaggerTag("流媒体服务器相关接口")]
     public class ApiServiceController : ControllerBase
     {
+        /// <summary>
+        /// 删除ffmpeg模板
+        /// </summary>
+        /// <param name="AccessKey"></param>
+        /// <param name="templateName"></param>
+        /// <returns></returns>
+        /// <exception cref="AkStreamException"></exception>
+        [Route("DelFFmpegTemplate")]
+        [HttpGet]
+        public bool DelFFmpegTemplate([FromHeader(Name = "AccessKey")] string AccessKey, string templateName)
+        {
+            ResponseStruct rs;
+            var ret = Common.MediaServerInstance.DelFFmpegTemplate(templateName, out rs);
+            if (!rs.Code.Equals(ErrorNumber.None))
+            {
+                throw new AkStreamException(rs);
+            }
+
+            return ret;
+        }
+
+
+        /// <summary>
+        /// 修改ffmpeg模板
+        /// </summary>
+        /// <param name="AccessKey"></param>
+        /// <param name="templateName"></param>
+        /// <param name="templateValue"></param>
+        /// <returns></returns>
+        /// <exception cref="AkStreamException"></exception>
+        [Route("ModifyFFmpegTemplate")]
+        [HttpGet]
+        public bool ModifyFFmpegTemplate([FromHeader(Name = "AccessKey")] string AccessKey, string templateName,
+            string templateValue)
+        {
+            ResponseStruct rs;
+            var ret = Common.MediaServerInstance.ModifyFFmpegTemplate(
+                new KeyValuePair<string, string>(templateName, templateValue), out rs);
+            if (!rs.Code.Equals(ErrorNumber.None))
+            {
+                throw new AkStreamException(rs);
+            }
+
+            return ret;
+        }
+
+        /// <summary>
+        /// 获取ffmpeg模板列表
+        /// </summary>
+        /// <param name="AccessKey"></param>
+        /// <param name="templateName"></param>
+        /// <param name="templateValue"></param>
+        /// <returns></returns>
+        /// <exception cref="AkStreamException"></exception>
+        [Route("GetFFmpegTemplateList")]
+        [HttpGet]
+        public List<KeyValuePair<string, string>> GetFFmpegTemplateList(
+            [FromHeader(Name = "AccessKey")] string AccessKey)
+        {
+            ResponseStruct rs;
+            var ret = Common.MediaServerInstance.GetFFmpegTempleteList(out rs);
+            if (!rs.Code.Equals(ErrorNumber.None))
+            {
+                throw new AkStreamException(rs);
+            }
+
+            return ret;
+        }
+
+
+        /// <summary>
+        /// 添加一个ffmpeg模板
+        /// </summary>
+        /// <param name="AccessKey"></param>
+        /// <param name="templateName"></param>
+        /// <param name="templateValue"></param>
+        /// <returns></returns>
+        /// <exception cref="AkStreamException"></exception>
+        [Route("AddFFmpegTemplate")]
+        [HttpGet]
+        public bool AddFFmpegTemplate([FromHeader(Name = "AccessKey")] string AccessKey, string templateName,
+            string templateValue)
+        {
+            ResponseStruct rs;
+            var ret = Common.MediaServerInstance.AddFFmpegTemplate(
+                new KeyValuePair<string, string>(templateName, templateValue), out rs);
+            if (!rs.Code.Equals(ErrorNumber.None))
+            {
+                throw new AkStreamException(rs);
+            }
+
+            return ret;
+        }
+
+        /// <summary>
+        /// 获取日志级别
+        /// </summary>
+        /// <param name="AccessKey"></param>
+        /// <returns></returns>
+        /// <exception cref="AkStreamException"></exception>
+        [Route("GetLoggerLevel")]
+        [HttpGet]
+        public string GetLoggerLevel([FromHeader(Name = "AccessKey")] string AccessKey)
+        {
+            ResponseStruct rs;
+            var ret = ApiService.GetLoggerLevel(out rs);
+            if (!rs.Code.Equals(ErrorNumber.None))
+            {
+                throw new AkStreamException(rs);
+            }
+
+            return ret;
+        }
+
+
+        /// <summary>
+        /// 获取AKStreamKeeper版本标识
+        /// </summary>
+        /// <param name="AccessKey"></param>
+        /// <returns></returns>
+        [Route("GetAKStreamKeeperVersion")]
+        [HttpGet]
+        public string GetAKStreamKeeperVersion([FromHeader(Name = "AccessKey")] string AccessKey)
+        {
+            return Common.Version;
+        }
+
+        /// <summary>
+        /// 获取rtp端口信息列表
+        /// </summary>
+        /// <param name="AccessKey"></param>
+        /// <returns></returns>
+        [Route("GetRtpPortInfoList")]
+        [HttpGet]
+        public List<PortInfo> GetRtpPortInfoList([FromHeader(Name = "AccessKey")] string AccessKey)
+        {
+            return Common.PortInfoList;
+        }
+
         /// <summary>
         /// 获取流媒体服务器运行状态
         /// </summary>
@@ -227,6 +367,20 @@ namespace AKStreamKeeper.Controllers
             var ret = ApiService.ReleaseRtpPort(port);
             return ret;
         }
+        
+        /// <summary>
+        /// 释放被用过的rtp(发送)端口
+        /// </summary>
+        /// <param name="AccessKey"></param>
+        /// <param name="port"></param>
+        /// <returns></returns>
+        [Route("ReleaseRtpPortForSender")]
+        [HttpGet]
+        public bool ReleaseRtpPortForSender([FromHeader(Name = "AccessKey")] string AccessKey, ushort port)
+        {
+            var ret = ApiService.ReleaseRtpPortForSender(port);
+            return ret;
+        }
 
         /// <summary>
         ///  获取一个可用的rtp端口（配置文件中minPort-maxPort的范围内的偶数端口）
@@ -243,6 +397,28 @@ namespace AKStreamKeeper.Controllers
         {
             ResponseStruct rs;
             var ret = ApiService.GuessAnRtpPort(out rs, min, max);
+            if (ret == 0 || !rs.Code.Equals(ErrorNumber.None))
+            {
+                throw new AkStreamException(rs);
+            }
+
+            return ret;
+        }
+        /// <summary>
+        ///  获取一个可用的rtp(发送)端口（配置文件中minSenderPort-maxSenderPort的范围内的偶数端口）
+        /// </summary>
+        /// <param name="AccessKey"></param>
+        /// <param name="min"></param>
+        /// <param name="max"></param>
+        /// <returns></returns>
+        /// <exception cref="AkStreamException"></exception>
+        [Route("GuessAnRtpPortForSender")]
+        [HttpGet]
+        public ushort GuessAnRtpPortForSender([FromHeader(Name = "AccessKey")] string AccessKey, ushort? min = 0,
+            ushort? max = 0)
+        {
+            ResponseStruct rs;
+            var ret = ApiService.GuessAnRtpPortForSender(out rs, min, max);
             if (ret == 0 || !rs.Code.Equals(ErrorNumber.None))
             {
                 throw new AkStreamException(rs);

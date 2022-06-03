@@ -6,22 +6,25 @@ namespace LibCommon.Structs.WebRequest
     [Serializable]
     public class ReqModifyVideoChannel : ReqActiveVideoChannel
     {
-        private bool? _enable;
-        private string? _mediaServerId;
+        private string? _channelId;
+        private string? _deviceId;
         private DeviceStreamType? _deviceStreamType;
+        private bool? _enabled;
+        private string? _mediaServerId;
         private MethodByGetStream? _methodByGetStream;
         private string? _videoSrcUrl;
-        private string? _deviceId;
-        private string? _channelId;
+        private bool? _isShareChannel;
+        private string? _shareUrl;
+        private string? _shareDeviceId;
 
 
         /// <summary>
         /// 是否启用
         /// </summary>
-        public bool? Enable
+        public bool? Enabled
         {
-            get => _enable;
-            set => _enable = value;
+            get => _enabled;
+            set => _enabled = value;
         }
 
         /// <summary>
@@ -76,6 +79,24 @@ namespace LibCommon.Structs.WebRequest
         {
             get => _channelId;
             set => _channelId = value;
+        }
+
+        public bool? IsShareChannel
+        {
+            get => _isShareChannel;
+            set => _isShareChannel = value;
+        }
+
+        public string? ShareUrl
+        {
+            get => _shareUrl;
+            set => _shareUrl = value;
+        }
+
+        public string? ShareDeviceId
+        {
+            get => _shareDeviceId;
+            set => _shareDeviceId = value;
         }
     }
 }

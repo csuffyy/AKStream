@@ -1,25 +1,26 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>netcoreapp3.1</TargetFramework>
-        <Nullable>enable</Nullable>
+        <TargetFramework>net6.0</TargetFramework>
+        <Nullable>disable</Nullable>
+        <LangVersion>default</LangVersion>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
-      <DocumentationFile>bin\Debug\LibSystemInfo.xml</DocumentationFile>
+      <DocumentationFile>bin/Debug/net5.0/LibSystemInfo.xml</DocumentationFile>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
-      <DocumentationFile>bin\Release\LibSystemInfo.xml</DocumentationFile>
+      <DocumentationFile>bin/Release/net5.0/LibSystemInfo.xml</DocumentationFile>
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
-      <PackageReference Include="SystemInfoLibrary" Version="1.4.3" />
+      <ProjectReference Include="..\LibCommon\LibCommon.csproj" />
+      <ProjectReference Include="..\SystemInfoLibrary\src\SystemInfoLibrary.Standard\SystemInfoLibrary.Standard.csproj" />
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\LibCommon\LibCommon.csproj" />
+      <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
     </ItemGroup>
 
 </Project>

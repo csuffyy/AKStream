@@ -5,13 +5,15 @@ namespace LibZLMediaKitMediaServer.Structs.WebRequest.ZLMediaKit
     [Serializable]
     public class ReqZLMediaKitAddStreamProxy : ReqZLMediaKitRequestBase
     {
-        private string _vhost;
         private string _app;
-        private string _stream;
-        private string _url;
-        private bool? _enable_hls;
-        private bool? _enable_mp4;
+        private int? _enable_hls;
+        private int? _enable_mp4;
         private int _rtp_type;
+        private string _stream;
+        private float? _timeout_sec;
+        private string _url;
+        private string _vhost;
+        private int? _retry_count=-1;//拉流失败时的重试拉流次数，-1为无限重试
 
 
         /// <summary>
@@ -53,7 +55,7 @@ namespace LibZLMediaKitMediaServer.Structs.WebRequest.ZLMediaKit
         /// <summary>
         /// 是否录制hls
         /// </summary>
-        public bool? Enable_Hls
+        public int? Enable_Hls
         {
             get => _enable_hls;
             set => _enable_hls = value;
@@ -62,7 +64,7 @@ namespace LibZLMediaKitMediaServer.Structs.WebRequest.ZLMediaKit
         /// <summary>
         /// 是否录制mp4
         /// </summary>
-        public bool? Enable_Mp4
+        public int? Enable_Mp4
         {
             get => _enable_mp4;
             set => _enable_mp4 = value;
@@ -75,6 +77,24 @@ namespace LibZLMediaKitMediaServer.Structs.WebRequest.ZLMediaKit
         {
             get => _rtp_type;
             set => _rtp_type = value;
+        }
+
+        /// <summary>
+        /// 超时时间
+        /// </summary>
+        public float? Timeout_Sec
+        {
+            get => _timeout_sec;
+            set => _timeout_sec = value;
+        }
+
+        /// <summary>
+        /// 拉流失败时的重试拉流次数，-1为无限重试
+        /// </summary>
+        public int? Retry_Count
+        {
+            get => _retry_count;
+            set => _retry_count = value;
         }
     }
 }

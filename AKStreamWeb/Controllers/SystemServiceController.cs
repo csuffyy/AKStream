@@ -17,6 +17,40 @@ namespace AKStreamWeb.Controllers
     public class SystemServiceController : ControllerBase
     {
         /// <summary>
+        /// 获取日志级别
+        /// </summary>
+        /// <param name="AccessKey"></param>
+        /// <returns></returns>
+        /// <exception cref="AkStreamException"></exception>
+        [Route("GetLoggerLevel")]
+        [HttpGet]
+        public string GetLoggerLevel([FromHeader(Name = "AccessKey")] string AccessKey)
+        {
+            ResponseStruct rs;
+            var ret = SystemService.GetLoggerLevel(out rs);
+            if (!rs.Code.Equals(ErrorNumber.None))
+            {
+                throw new AkStreamException(rs);
+            }
+
+            return ret;
+        }
+
+
+
+        /// <summary>
+        /// 获取AKStreamWeb版本标识
+        /// </summary>
+        /// <param name="AccessKey"></param>
+        /// <returns></returns>
+        [Route("GetVersion")]
+        [HttpPost]
+        public string GetVersion([FromHeader(Name = "AccessKey")] string AccessKey)
+        {
+            return Common.Version;
+        }
+
+        /// <summary>
         /// 获取系统性能信息
         /// </summary>
         /// <param name="AccessKey"></param>

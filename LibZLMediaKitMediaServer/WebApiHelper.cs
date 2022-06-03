@@ -7,12 +7,12 @@ namespace LibZLMediaKitMediaServer
 {
     public class WebApiHelper
     {
-        private string _ipAddress;
-        private ushort _webApiPort;
-        private string _secret;
         private string _baseUri = "/index/api/";
-        private bool _useSSL = false;
         private int _httpClientTimeout;
+        private string _ipAddress;
+        private string _secret;
+        private bool _useSSL = false;
+        private ushort _webApiPort;
 
 
         public WebApiHelper(string ipAddress, ushort webApiPort, string secret, int httpClientTimeoutSec = 5,
@@ -803,6 +803,146 @@ namespace LibZLMediaKitMediaServer
             return null;
         }
 
+        /// <summary>
+        /// 删除StreamProxy
+        /// </summary>
+        /// <param name="req"></param>
+        /// <param name="rs"></param>
+        /// <returns></returns>
+        public ResZLMeidaKitDelStreamProxy DelStreamProxy(ReqZLMediaKitDelStreamProxy req, out ResponseStruct rs)
+        {
+            rs = new ResponseStruct()
+            {
+                Code = ErrorNumber.None,
+                Message = ErrorMessage.ErrorDic![ErrorNumber.None],
+            };
+
+            string url = _useSSL ? "https://" : "http://" + $"{_ipAddress}:{_webApiPort}{_baseUri}delStreamProxy";
+            try
+            {
+                req.Secret = this._secret;
+                string reqData = JsonHelper.ToJson(req);
+                var httpRet = NetHelper.HttpPostRequest(url, null, reqData, "utf-8", _httpClientTimeout * 12);
+                if (!string.IsNullOrEmpty(httpRet))
+                {
+                    if (UtilsHelper.HttpClientResponseIsNetWorkError(httpRet))
+                    {
+                        rs = new ResponseStruct()
+                        {
+                            Code = ErrorNumber.Sys_HttpClientTimeout,
+                            Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_HttpClientTimeout],
+                        };
+                        return null;
+                    }
+
+                    var resZLMeidaKitDelStreamProxy = JsonHelper.FromJson<ResZLMeidaKitDelStreamProxy>(httpRet);
+                    if (resZLMeidaKitDelStreamProxy != null)
+                    {
+                        return resZLMeidaKitDelStreamProxy;
+                    }
+
+                    var resError = JsonHelper.FromJson<ResZLMediaKitErrorResponse>(httpRet);
+                    rs = new ResponseStruct()
+                    {
+                        Code = ErrorNumber.MediaServer_WebApiDataExcept,
+                        Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_WebApiDataExcept],
+                        ExceptMessage = httpRet,
+                        ExceptStackTrace = JsonHelper.ToJson(resError),
+                    };
+                }
+                else
+                {
+                    rs = new ResponseStruct()
+                    {
+                        Code = ErrorNumber.MediaServer_WebApiDataExcept,
+                        Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_WebApiDataExcept],
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                rs = new ResponseStruct()
+                {
+                    Code = ErrorNumber.MediaServer_WebApiExcept,
+                    Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_WebApiExcept],
+                    ExceptMessage = ex.Message,
+                    ExceptStackTrace = ex.StackTrace,
+                };
+            }
+
+            return null;
+        }
+
+
+        /// <summary>
+        /// 用于删除FFmpegSource
+        /// </summary>
+        /// <param name="req"></param>
+        /// <param name="rs"></param>
+        /// <returns></returns>
+        public ResZLMeidaKitDelFfMpegSource DelFFmpegSource(ReqZLMediaKitDelFFmpegSource req, out ResponseStruct rs)
+        {
+            rs = new ResponseStruct()
+            {
+                Code = ErrorNumber.None,
+                Message = ErrorMessage.ErrorDic![ErrorNumber.None],
+            };
+
+            string url = _useSSL ? "https://" : "http://" + $"{_ipAddress}:{_webApiPort}{_baseUri}delFFmpegSource";
+            try
+            {
+                req.Secret = this._secret;
+                string reqData = JsonHelper.ToJson(req);
+                var httpRet = NetHelper.HttpPostRequest(url, null, reqData, "utf-8", _httpClientTimeout * 12);
+                if (!string.IsNullOrEmpty(httpRet))
+                {
+                    if (UtilsHelper.HttpClientResponseIsNetWorkError(httpRet))
+                    {
+                        rs = new ResponseStruct()
+                        {
+                            Code = ErrorNumber.Sys_HttpClientTimeout,
+                            Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_HttpClientTimeout],
+                        };
+                        return null;
+                    }
+
+                    var resZLMeidaKitDelFfMpegSource = JsonHelper.FromJson<ResZLMeidaKitDelFfMpegSource>(httpRet);
+                    if (resZLMeidaKitDelFfMpegSource != null)
+                    {
+                        return resZLMeidaKitDelFfMpegSource;
+                    }
+
+                    var resError = JsonHelper.FromJson<ResZLMediaKitErrorResponse>(httpRet);
+                    rs = new ResponseStruct()
+                    {
+                        Code = ErrorNumber.MediaServer_WebApiDataExcept,
+                        Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_WebApiDataExcept],
+                        ExceptMessage = httpRet,
+                        ExceptStackTrace = JsonHelper.ToJson(resError),
+                    };
+                }
+                else
+                {
+                    rs = new ResponseStruct()
+                    {
+                        Code = ErrorNumber.MediaServer_WebApiDataExcept,
+                        Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_WebApiDataExcept],
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                rs = new ResponseStruct()
+                {
+                    Code = ErrorNumber.MediaServer_WebApiExcept,
+                    Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_WebApiExcept],
+                    ExceptMessage = ex.Message,
+                    ExceptStackTrace = ex.StackTrace,
+                };
+            }
+
+            return null;
+        }
 
         /// <summary>
         /// 获取rtp代理时的某路ssrc rtp信息
@@ -1100,13 +1240,15 @@ namespace LibZLMediaKitMediaServer
                 Code = ErrorNumber.None,
                 Message = ErrorMessage.ErrorDic![ErrorNumber.None],
             };
-
+            req.Url = req.Url.Replace(_ipAddress, "127.0.0.1");
             string url = _useSSL
                 ? "https://"
                 : "http://" +
                   $"{_ipAddress}:{_webApiPort}{_baseUri}getSnap?secret={this._secret}&url={req.Url}&timeout_sec={req.Timeout_Sec}&expire_sec={req.Expire_Sec}";
+            
             try
             {
+             
                 string base64 = "";
                 var httpRet = NetHelper.DownloadFileToBase64(url, out base64);
                 if (httpRet && !string.IsNullOrEmpty(base64))
@@ -1115,6 +1257,7 @@ namespace LibZLMediaKitMediaServer
                 }
                 else
                 {
+                
                     rs = new ResponseStruct()
                     {
                         Code = ErrorNumber.MediaServer_WebApiDataExcept,
@@ -1355,7 +1498,7 @@ namespace LibZLMediaKitMediaServer
         /// <param name="req"></param>
         /// <param name="rs"></param>
         /// <returns></returns>
-        public ResZLMediaKitResponseBase StartSendRtp(ReqZLMediaKitStartSendRtp req, out ResponseStruct rs)
+        public ResZLMediakitStartSendRtp StartSendRtp(ReqZLMediaKitStartSendRtp req, out ResponseStruct rs)
         {
             rs = new ResponseStruct()
             {
@@ -1381,10 +1524,10 @@ namespace LibZLMediaKitMediaServer
                         return null;
                     }
 
-                    var resZLMediaKitResponseBase = JsonHelper.FromJson<ResZLMediaKitResponseBase>(httpRet);
-                    if (resZLMediaKitResponseBase != null)
+                    var resZLMediakitStartSendRtp = JsonHelper.FromJson<ResZLMediakitStartSendRtp>(httpRet);
+                    if (resZLMediakitStartSendRtp != null)
                     {
-                        return resZLMediaKitResponseBase;
+                        return resZLMediakitStartSendRtp;
                     }
 
                     var resError = JsonHelper.FromJson<ResZLMediaKitErrorResponse>(httpRet);

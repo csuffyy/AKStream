@@ -9,19 +9,26 @@ namespace AKStreamKeeper.Misc
     [Serializable]
     public class AKStreamKeeperConfig
     {
-        private string _ipV4Address;
-        private string _ipV6Address;
-        private ushort _webApiPort;
-        private string _mediaServerPath;
+        private string _accessKey;
         private string _akStreamWebRegisterUrl;
         private List<string> _customRecordPathList;
-        private bool _useSSL = false;
-        private ushort _minRtpPort = 10001;
-        private ushort _maxRtpPort = 30000;
+        private string? _cutMergeFilePath;
+        private bool _disableShell;
         private string _ffmpegPath;
-        private string _accessKey;
-        private int _rtpPortCDTime;
         private int _httpClientTimeoutSec;
+        private string _ipV4Address;
+        private string _ipV6Address;
+        private ushort _maxRtpPort = 30000;
+        private string _mediaServerPath;
+        private ushort _minRtpPort = 10001;
+        private ushort _minSendRtpPort= 20002;
+        private ushort _maxSendRtpPort = 20200;
+        private bool _randomPort = false;
+        private int? _recordSec = 120;
+        private int _rtpPortCDTime;
+        private bool _useSSL = false;
+        private ushort _webApiPort;
+        private string? _zLMediakitSSLFilePath;
 
 
         /// <summary>
@@ -70,6 +77,16 @@ namespace AKStreamKeeper.Misc
         }
 
         /// <summary>
+        /// 裁剪合并任务文件存放位置 
+        /// </summary>
+        public string? CutMergeFilePath
+        {
+            get => _cutMergeFilePath;
+            set => _cutMergeFilePath = value;
+        }
+
+
+        /// <summary>
         /// 自定义录像路径列表
         /// </summary>
         public List<string> CustomRecordPathList
@@ -106,6 +123,24 @@ namespace AKStreamKeeper.Misc
         }
 
         /// <summary>
+        /// rtp端口是否由zlm随机生成
+        /// </summary>
+        public bool RandomPort
+        {
+            get => _randomPort;
+            set => _randomPort = value;
+        }
+
+        /// <summary>
+        /// 录制文件时长(秒)
+        /// </summary>
+        public int? RecordSec
+        {
+            get => _recordSec;
+            set => _recordSec = value;
+        }
+
+        /// <summary>
         /// ffmpeg的可执行文件路径
         /// </summary>
         public string FFmpegPath
@@ -139,6 +174,42 @@ namespace AKStreamKeeper.Misc
         {
             get => _httpClientTimeoutSec;
             set => _httpClientTimeoutSec = value;
+        }
+
+        /// <summary>
+        /// 停用zlmediakit的远程shell功能
+        /// </summary>
+        public bool DisableShell
+        {
+            get => _disableShell;
+            set => _disableShell = value;
+        }
+
+        /// <summary>
+        /// zlm的证书路径
+        /// </summary>
+        public string? ZLMediakitSSLFilePath
+        {
+            get => _zLMediakitSSLFilePath;
+            set => _zLMediakitSSLFilePath = value;
+        }
+
+        /// <summary>
+        /// 用于指定发送的Rtp端口的最小值
+        /// </summary>
+        public ushort MinSendRtpPort
+        {
+            get => _minSendRtpPort;
+            set => _minSendRtpPort = value;
+        }
+
+        /// <summary>
+        /// 用于指定发送的Rtp端口的最大值
+        /// </summary>
+        public ushort MaxSendRtpPort
+        {
+            get => _maxSendRtpPort;
+            set => _maxSendRtpPort = value;
         }
     }
 }

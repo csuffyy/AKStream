@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using LibCommon.Enums;
 
 namespace LibCommon.Structs.WebRequest
 {
@@ -9,8 +9,9 @@ namespace LibCommon.Structs.WebRequest
     [Serializable]
     public class ReqGetOnlineStreamInfoList : ReqPaginationBase
     {
-        private string? _mediaServerId;
         private string? _mainId;
+        private string? _mediaServerId;
+        private StreamSourceType? _streamSourceType;
         private string? _videoChannelIp;
 
         public string? MediaServerId
@@ -30,6 +31,15 @@ namespace LibCommon.Structs.WebRequest
         {
             get => _videoChannelIp;
             set => _videoChannelIp = value;
+        }
+
+        /// <summary>
+        /// 流的来源类型，直播/回放
+        /// </summary>
+        public StreamSourceType? StreamSourceType
+        {
+            get => _streamSourceType;
+            set => _streamSourceType = value;
         }
     }
 }

@@ -1,9 +1,8 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using LibCommon.Enums;
 using LibCommon.Structs.GB28181.Sys;
 using LibCommon.Structs.GB28181.XML;
+using LiteDB;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using SIPSorcery.SIP;
@@ -13,24 +12,28 @@ namespace LibCommon.Structs.GB28181
     [Serializable]
     public class SipChannel : IDisposable
     {
-        private string _parentId = null!;
         private string _deviceId = null!;
-        private string _ssrcId;
-        private string _stream;
-        private SIPEndPoint _remoteEndPoint = null!;
-        private SIPEndPoint _localSipEndPoint = null!;
-        private PushStatus _pushStatus;
-        private DateTime _lastUpdateTime;
-        private SipChannelType _sipChannelType;
-        private DevStatus _sipChannelStatus;
-        private Catalog.Item _sipChannelDesc = null!;
-        private MediaServerStreamInfo? _channelMediaServerStreamInfo;
+
+        //  private MediaServerStreamInfo? _channelMediaServerStreamInfo;
         private SIPRequest _inviteSipRequest; //要把请求实时视频时的req和res存起来，因为在结束时要用到这两个内容
         private SIPResponse _inviteSipResponse; //要把请求实时视频时的req和res存起来，因为在结束时要用到这两个内容
         private SIPRequest _lastSipRequest; //保存最后一次sipRequest
+        private DateTime _lastUpdateTime;
+        private SIPEndPoint _localSipEndPoint = null!;
+        private string _parentId = null!;
+        private PushStatus _pushStatus;
+        private SIPEndPoint _remoteEndPoint = null!;
 
+        private Catalog.Item _sipChannelDesc = null!;
+        private DevStatus _sipChannelStatus;
+        private SipChannelType _sipChannelType;
+        private string _ssrcId;
+        private string _stream;
+
+        /*
         private List<KeyValuePair<int, RecordInfo.RecItem>> _lastRecordInfos =
             new List<KeyValuePair<int, RecordInfo.RecItem>>(); //最后一次获取到的录像文件列表
+            */
 
 
         /// <summary>
@@ -60,7 +63,7 @@ namespace LibCommon.Structs.GB28181
 
 
         [JsonIgnore]
-
+        [BsonIgnore]
         /// <summary>
         /// sip设备的ip端口协议
         /// </summary>
@@ -72,6 +75,7 @@ namespace LibCommon.Structs.GB28181
 
 
         [JsonIgnore]
+        [BsonIgnore]
         /// <summary>
         /// sip服务的ip端口协议
         /// </summary>
@@ -149,25 +153,20 @@ namespace LibCommon.Structs.GB28181
             set => _sipChannelDesc = value;
         }
 
-
-        public void Dispose()
-        {
-            _sipChannelDesc = null!;
-        }
-
-        /// <summary>
+        /*/// <summary>
         /// Sip通道的流媒体相关信息
         /// </summary>
         public MediaServerStreamInfo? ChannelMediaServerStreamInfo
         {
             get => _channelMediaServerStreamInfo;
             set => _channelMediaServerStreamInfo = value;
-        }
+        }*/
 
         /// <summary>
         /// 保存请求实时流时的request,因为在终止实时流的时候要用到
         /// </summary>
         [JsonIgnore]
+        [BsonIgnore]
         public SIPRequest InviteSipRequest
         {
             get => _inviteSipRequest;
@@ -179,6 +178,7 @@ namespace LibCommon.Structs.GB28181
         /// 保存请求实时流时的response,因为在终止实时流的时候要用到
         /// </summary>
         [JsonIgnore]
+        [BsonIgnore]
         public SIPResponse InviteSipResponse
         {
             get => _inviteSipResponse;
@@ -189,50 +189,17 @@ namespace LibCommon.Structs.GB28181
         /// 保存最后一次SipRequest
         /// </summary>
         [JsonIgnore]
+        [BsonIgnore]
         public SIPRequest LastSipRequest
         {
             get => _lastSipRequest;
             set => _lastSipRequest = value ?? throw new ArgumentNullException(nameof(value));
         }
 
-        /// <summary>
-        /// 最后一次获取到的录像文件列表
-        /// </summary>
-        public List<KeyValuePair<int, RecordInfo.RecItem>> LastRecordInfos
+
+        public void Dispose()
         {
-            get => _lastRecordInfos;
-            set => _lastRecordInfos = value ?? throw new ArgumentNullException(nameof(value));
-        }
-
-        /// <summary>
-        /// 获取最后查询到的录像文件，按排序规则排序
-        /// </summary>
-        /// <param name="orderBy"></param>
-        /// <returns></returns>
-        public List<RecordInfo.RecItem> GetLastRecordInfoList(OrderBy orderBy = OrderBy.ASC)
-        {
-            List<RecordInfo.RecItem> result = new List<RecordInfo.RecItem>();
-            foreach (var kv in LastRecordInfos)
-            {
-                if (kv.Value != null)
-                {
-                    result.Add(kv.Value);
-                }
-            }
-
-            switch (orderBy)
-            {
-                case OrderBy.ASC:
-                    result = result.OrderBy(x => x.EndTime).ToList();
-
-                    break;
-                case OrderBy.DESC:
-                    result = result.OrderByDescending(x => x.EndTime).ToList();
-
-                    break;
-            }
-
-            return result;
+            _sipChannelDesc = null!;
         }
 
 

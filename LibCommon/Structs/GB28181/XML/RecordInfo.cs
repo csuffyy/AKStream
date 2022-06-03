@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Xml.Serialization;
+using LibCommon.Enums;
+using LiteDB;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using SIPSorcery.SIP;
@@ -159,16 +161,23 @@ namespace LibCommon.Structs.GB28181.XML
             }
         }
 
+        [Serializable]
         public class RecItem
         {
+            private string _app;
+            private string _callId;
+            private int _cSeq;
+            private string _fromTag;
             private SIPRequest? _inviteSipRequest = null;
             private SIPResponse? _inviteSipResponse = null;
-            private SipDevice? _sipDevice = null;
-            private SipChannel? _sipChannel = null;
             private MediaServerStreamInfo? _mediaServerStreamInfo;
             private PushStatus _pushStatus;
+            private SipChannel? _sipChannel = null;
+            private SipDevice? _sipDevice = null;
             private string _ssrcId;
             private string _stream;
+            private string _toTag;
+            private string _vhost;
 
             [XmlIgnore]
             /// <summary>
@@ -195,6 +204,20 @@ namespace LibCommon.Structs.GB28181.XML
                 set => _stream = value ?? throw new ArgumentNullException(nameof(value));
             }
 
+            [XmlIgnore]
+            public string App
+            {
+                get => _app;
+                set => _app = value ?? throw new ArgumentNullException(nameof(value));
+            }
+
+            [XmlIgnore]
+            public string Vhost
+            {
+                get => _vhost;
+                set => _vhost = value ?? throw new ArgumentNullException(nameof(value));
+            }
+
             /// <summary>
             /// 推流时的request
             /// 要把请求实时视频时的req和res存起来，因为在结束时要用到这两个内容
@@ -202,6 +225,7 @@ namespace LibCommon.Structs.GB28181.XML
 
             [JsonIgnore]
             [XmlIgnore]
+            [BsonIgnore]
             public SIPRequest? InviteSipRequest
             {
                 get => _inviteSipRequest;
@@ -210,6 +234,7 @@ namespace LibCommon.Structs.GB28181.XML
 
             [JsonIgnore]
             [XmlIgnore]
+            [BsonIgnore]
             /// <summary>
             /// 推流时的response
             /// 要把请求实时视频时的req和res存起来，因为在结束时要用到这两个内容
@@ -222,6 +247,7 @@ namespace LibCommon.Structs.GB28181.XML
 
             [JsonIgnore]
             [XmlIgnore]
+
             /// <summary>
             /// 录像文件所在Sip设备
             /// </summary>
@@ -233,6 +259,7 @@ namespace LibCommon.Structs.GB28181.XML
 
             [JsonIgnore]
             [XmlIgnore]
+
             /// <summary>
             /// 录像文件所在Sip通道
             /// </summary>
@@ -243,6 +270,30 @@ namespace LibCommon.Structs.GB28181.XML
                 set => _sipChannel = value;
             }
 
+
+            public string FromTag
+            {
+                get => _fromTag;
+                set => _fromTag = value ?? throw new ArgumentNullException(nameof(value));
+            }
+
+            public string ToTag
+            {
+                get => _toTag;
+                set => _toTag = value ?? throw new ArgumentNullException(nameof(value));
+            }
+
+            public string CallId
+            {
+                get => _callId;
+                set => _callId = value ?? throw new ArgumentNullException(nameof(value));
+            }
+
+            public int CSeq
+            {
+                get => _cSeq;
+                set => _cSeq = value;
+            }
 
             /// <summary>
             /// 推流状态

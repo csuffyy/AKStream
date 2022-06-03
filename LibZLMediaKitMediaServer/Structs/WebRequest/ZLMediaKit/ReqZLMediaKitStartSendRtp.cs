@@ -8,14 +8,14 @@ namespace LibZLMediaKitMediaServer.Structs.WebRequest.ZLMediaKit
     [Serializable]
     public class ReqZLMediaKitStartSendRtp : ReqZLMediaKitRequestBase
     {
-        private string _vhost;
         private string _app;
-        private string _stream;
-        private string _ssrc;
-        private string _dst_url;
         private string _dst_port;
+        private string _dst_url;
         private string _is_udp;
         private ushort _src_port;
+        private string _ssrc;
+        private string _stream;
+        private string _vhost;
 
 
         /// <summary>
@@ -88,6 +88,11 @@ namespace LibZLMediaKitMediaServer.Structs.WebRequest.ZLMediaKit
         {
             get => _src_port;
             set => _src_port = value;
+        }
+
+        public override string ToString()
+        {
+            return $"{nameof(Vhost)}: {Vhost}, {nameof(App)}: {App}, {nameof(Stream)}: {Stream}, {nameof(Ssrc)}: {Ssrc}, {nameof(Dst_Url)}: {Dst_Url}, {nameof(Dst_Port)}: {Dst_Port}, {nameof(Is_Udp)}: {Is_Udp}, {nameof(Src_Port)}: {Src_Port}";
         }
     }
 }

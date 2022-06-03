@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Threading;
+using AKStreamKeeper.Misc;
 using IniParser;
 using IniParser.Model;
 using LibCommon;
@@ -16,29 +18,83 @@ namespace AKStreamKeeper
     [Serializable]
     public class MediaServerInstance
     {
-        private string _binPath;
-        private string _configPath;
-        private string _workPath;
-        private Process _process;
-        private string _secret;
-        private string _mediaServerId;
         private static int _pid;
-        private bool _isRunning => CheckRunning();
-        private ushort _zlmHttpPort;
-        private ushort _zlmHttpsPort;
-        private ushort _zlmRtspPort;
-        private ushort _zlmRtmpPort;
-        private ushort _zlmRtspsPort;
-        private ushort _zlmRtmpsPort;
-        private ushort _zlmRtpProxyPort;
-        private uint _zlmRecordFileSec;
-        private string _zlmFFMPEGCmd;
         private static bool _isSelfClose = false;
 
-        public static event Common.MediaServerKilled OnMediaKilled = null!;
-
+        private static AKStreamKeeperConfig _akStreamKeeperConfig;
         private static ProcessHelper _mediaServerProcessHelper =
             new ProcessHelper(p_StdOutputDataReceived, p_ErrOutputDataReceived, p_Process_Exited!);
+
+        private string _binPath;
+        private string _configPath;
+        private string _mediaServerId;
+        private Process _process;
+        private string _secret;
+        private string _workPath;
+        private string _zlmFFMPEGCmd;
+        private ushort _zlmHttpPort;
+        private ushort _zlmHttpsPort;
+        private uint _zlmRecordFileSec;
+        private ushort _zlmRtmpPort;
+        private ushort _zlmRtmpsPort;
+        private ushort _zlmRtpProxyPort;
+        private ushort _zlmRtspPort;
+        private ushort _zlmRtspsPort;
+
+        public  AKStreamKeeperConfig AkStreamKeeperConfig
+        {
+            get => _akStreamKeeperConfig;
+            set => _akStreamKeeperConfig = value;
+        }
+
+        /// <summary>
+        /// 构造函数
+        /// </summary>
+        /// <param name="binPath"></param>
+        /// <param name="configPath"></param>
+        public MediaServerInstance(string binPath, AKStreamKeeperConfig keeperConfig, string configPath = "")
+        {
+            _akStreamKeeperConfig = keeperConfig;
+            _binPath = binPath;
+            if (string.IsNullOrEmpty(configPath) || !File.Exists(configPath))
+            {
+                _workPath = Path.GetDirectoryName(binPath);
+                _configPath = _workPath + "/config.ini";
+            }
+            else
+            {
+                _configPath = configPath;
+            }
+
+            ResponseStruct rs;
+            try
+            {
+                var ret = GetConfig(out rs);
+                if (!ret || !rs.Code.Equals(ErrorNumber.None))
+                {
+                    throw new AkStreamException(rs);
+                }
+
+                var ret2 = SetConfig(out rs);
+                if (!ret2 || !rs.Code.Equals(ErrorNumber.None))
+                {
+                    throw new AkStreamException(rs);
+                }
+            }
+            catch (Exception ex)
+            {
+                rs = new ResponseStruct()
+                {
+                    Code = ErrorNumber.Other,
+                    Message = ErrorMessage.ErrorDic![ErrorNumber.Other],
+                    ExceptMessage = ex.Message,
+                    ExceptStackTrace = ex.StackTrace,
+                };
+                throw new AkStreamException(rs);
+            }
+        }
+
+        private bool _isRunning => CheckRunning();
 
         /// <summary>
         /// 可执行文件路径
@@ -171,50 +227,292 @@ namespace AKStreamKeeper
             get => _isRunning;
         }
 
+        public static event Common.MediaServerKilled OnMediaKilled = null!;
+        
+        
         /// <summary>
-        /// 构造函数
+        /// 修改一个ffmpeg模板
         /// </summary>
-        /// <param name="binPath"></param>
-        /// <param name="configPath"></param>
-        public MediaServerInstance(string binPath, string configPath = "")
+        /// <param name="tmplate"></param>
+        /// <returns></returns>
+        public  bool ModifyFFmpegTemplate(KeyValuePair<string, string> tmplate,out ResponseStruct rs)
         {
-            _binPath = binPath;
-            if (string.IsNullOrEmpty(configPath) || !File.Exists(configPath))
+               rs = new ResponseStruct()
             {
-                _workPath = Path.GetDirectoryName(binPath);
-                _configPath = _workPath + "/config.ini";
-            }
-            else
+                Code = ErrorNumber.None,
+                Message = ErrorMessage.ErrorDic![ErrorNumber.None],
+            };
+           
+            if (!string.IsNullOrEmpty(_configPath) && File.Exists(_configPath))
             {
-                _configPath = configPath;
-            }
-
-            ResponseStruct rs;
-            try
-            {
-                var ret = GetConfig(out rs);
-                if (!ret || !rs.Code.Equals(ErrorNumber.None))
+                var parser = new FileIniDataParser();
+                try
                 {
+                    IniData data = parser.ReadFile(_configPath, Encoding.UTF8);
+                    var ffmpeg_temp = data["ffmpeg_templete"]; //获取ffmpeg模板列表
+                    bool found = false;
+                    if (ffmpeg_temp != null)
+                    {
+                        foreach (var temp in ffmpeg_temp)
+                        {
+                            if (temp.KeyName.Trim().ToLower().Equals(tmplate.Key.Trim().ToLower()))
+                            {
+                                found = true;
+                                break;
+                            }
+                        }
+
+                        if (found)
+                        {
+                            data["ffmpeg_templete"][tmplate.Key] =
+                               tmplate.Value;
+                            parser.WriteFile(_configPath, data);
+                            Reload();
+                            return true;
+
+                        }
+
+                        rs = new ResponseStruct()
+                        {
+                            Code = ErrorNumber.MediaServer_ObjectNotExists,
+                            Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_ObjectNotExists],
+                         
+                        };
+                        return false;
+
+                    }
+
+                    rs = new ResponseStruct()
+                    {
+                        Code = ErrorNumber.MediaServer_ObjectNotExists,
+                        Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_ObjectNotExists],
+                         
+                    };
+                    return false;
+
+                }
+                catch(Exception ex)
+                {
+                    rs = new ResponseStruct()
+                    {
+                        Code = ErrorNumber.Sys_ReadIniFileExcept,
+                        Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_ReadIniFileExcept],
+                        ExceptMessage = ex.Message,
+                        ExceptStackTrace = ex.StackTrace,
+                    };
                     throw new AkStreamException(rs);
                 }
+            }
 
-                var ret2 = SetConfig(out rs);
-                if (!ret2 || !rs.Code.Equals(ErrorNumber.None))
+            rs = new ResponseStruct()
+            {
+                Code = ErrorNumber.MediaServer_ConfigNotFound,
+                Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_ConfigNotFound],
+                 
+            };
+            throw new AkStreamException(rs);
+        }
+        /// <summary>
+        /// 删除一个ffmpeg模板
+        /// </summary>
+        /// <param name="tmplateName"></param>
+        /// <returns></returns>
+        public  bool DelFFmpegTemplate(string tmplateName,out ResponseStruct rs)
+        {
+             rs = new ResponseStruct()
+            {
+                Code = ErrorNumber.None,
+                Message = ErrorMessage.ErrorDic![ErrorNumber.None],
+            };
+           
+            if (!string.IsNullOrEmpty(_configPath) && File.Exists(_configPath))
+            {
+                var parser = new FileIniDataParser();
+                try
                 {
+                    IniData data = parser.ReadFile(_configPath, Encoding.UTF8);
+                    var ffmpeg_temp = data["ffmpeg_templete"]; //获取ffmpeg模板列表
+                    bool found = false;
+                    if (ffmpeg_temp != null)
+                    {
+                        foreach (var temp in ffmpeg_temp)
+                        {
+                            if (temp.KeyName.Trim().ToLower().Equals(tmplateName.ToLower()))
+                            {
+                                found = true;
+                                break;
+                            }
+                        }
+
+                        if (found)
+                        {
+                            ffmpeg_temp.RemoveKey(tmplateName);
+                            parser.WriteFile(_configPath, data);
+                            Reload();
+                        }
+                    }
+                    return true;
+
+                }
+                catch(Exception ex)
+                {
+                    rs = new ResponseStruct()
+                    {
+                        Code = ErrorNumber.Sys_ReadIniFileExcept,
+                        Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_ReadIniFileExcept],
+                        ExceptMessage = ex.Message,
+                        ExceptStackTrace = ex.StackTrace,
+                    };
                     throw new AkStreamException(rs);
                 }
             }
-            catch (Exception ex)
+
+            rs = new ResponseStruct()
             {
-                rs = new ResponseStruct()
+                Code = ErrorNumber.MediaServer_ConfigNotFound,
+                Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_ConfigNotFound],
+                 
+            };
+            throw new AkStreamException(rs);
+        }
+
+        /// <summary>
+        /// 添加一个ffmpeg模板
+        /// </summary>
+        /// <param name="tmplate"></param>
+        /// <returns></returns>
+        public  bool AddFFmpegTemplate(KeyValuePair<string, string> tmplate,out ResponseStruct rs)
+        {
+           
+            rs = new ResponseStruct()
+            {
+                Code = ErrorNumber.None,
+                Message = ErrorMessage.ErrorDic![ErrorNumber.None],
+            };
+           
+            if (!string.IsNullOrEmpty(_configPath) && File.Exists(_configPath))
+            {
+                var parser = new FileIniDataParser();
+                try
                 {
-                    Code = ErrorNumber.Other,
-                    Message = ErrorMessage.ErrorDic![ErrorNumber.Other],
-                    ExceptMessage = ex.Message,
-                    ExceptStackTrace = ex.StackTrace,
-                };
-                throw new AkStreamException(rs);
+                    IniData data = parser.ReadFile(_configPath, Encoding.UTF8);
+                    var ffmpeg_temp = data["ffmpeg_templete"]; //获取ffmpeg模板列表
+                    bool found = false;
+                    if (ffmpeg_temp != null)
+                    {
+                        foreach (var temp in ffmpeg_temp)
+                        {
+                            if (temp.KeyName.Trim().ToLower().Equals(tmplate.Key.Trim().ToLower()))
+                            {
+                                found = true;
+                                break;
+                            }
+                        }
+
+                        if (found)
+                        {
+                            rs = new ResponseStruct()
+                            {
+                                Code = ErrorNumber.MediaServer_InputObjectAlredayExists,
+                                Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_InputObjectAlredayExists],
+                            };
+                            return false;
+                        }
+                        SectionData ff = new SectionData("ffmpeg_templete");
+                        KeyData ffkey = new KeyData(tmplate.Key);
+                        ffkey.Value = tmplate.Value;
+                        ff.Keys.AddKey(ffkey);
+                        data.Sections.Add(ff);
+                        parser.WriteFile(_configPath, data);
+                        Reload();
+                        return true;
+                    }
+                    else
+                    {
+                        SectionData ff = new SectionData("ffmpeg_templete");
+                        KeyData ffkey = new KeyData(tmplate.Key);
+                        ffkey.Value = tmplate.Value;
+                        ff.Keys.AddKey(ffkey);
+                        data.Sections.Add(ff);
+                        parser.WriteFile(_configPath, data);
+                        Reload();
+                        return true;
+                    }
+                   
+                }
+                catch(Exception ex)
+                {
+                    rs = new ResponseStruct()
+                    {
+                        Code = ErrorNumber.Sys_ReadIniFileExcept,
+                        Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_ReadIniFileExcept],
+                        ExceptMessage = ex.Message,
+                        ExceptStackTrace = ex.StackTrace,
+                    };
+                    throw new AkStreamException(rs);
+                }
             }
+
+            rs = new ResponseStruct()
+            {
+                Code = ErrorNumber.MediaServer_ConfigNotFound,
+                Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_ConfigNotFound],
+                 
+            };
+            throw new AkStreamException(rs);
+        }
+
+        /// <summary>
+        /// 获取ffmpeg模板列表
+        /// </summary>
+        /// <returns></returns>
+        public  List<KeyValuePair<string, string>> GetFFmpegTempleteList(out ResponseStruct rs)
+        {
+            rs = new ResponseStruct()
+            {
+                Code = ErrorNumber.None,
+                Message = ErrorMessage.ErrorDic![ErrorNumber.None],
+            };
+            List<KeyValuePair<string, string>> result = new List<KeyValuePair<string, string>>();
+            if (!string.IsNullOrEmpty(_configPath) && File.Exists(_configPath))
+            {
+                var parser = new FileIniDataParser();
+                try
+                {
+                    IniData data = parser.ReadFile(_configPath, Encoding.UTF8);
+                    var ffmpeg_temp = data["ffmpeg_templete"]; //获取ffmpeg模板列表
+                    if (ffmpeg_temp != null && ffmpeg_temp.Count > 0)
+                    {
+                        foreach (var temp in ffmpeg_temp)
+                        {
+                            if (temp != null)
+                            {
+                                result.Add(new KeyValuePair<string, string>(temp.KeyName,temp.Value));
+                            }
+                        }
+                    }
+                    return result;
+                }
+                catch(Exception ex)
+                {
+                    rs = new ResponseStruct()
+                    {
+                        Code = ErrorNumber.Sys_ReadIniFileExcept,
+                        Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_ReadIniFileExcept],
+                        ExceptMessage = ex.Message,
+                        ExceptStackTrace = ex.StackTrace,
+                    };
+                    throw new AkStreamException(rs);
+                }
+            }
+
+            rs = new ResponseStruct()
+            {
+                Code = ErrorNumber.MediaServer_ConfigNotFound,
+                Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_ConfigNotFound],
+                 
+            };
+            throw new AkStreamException(rs);
         }
 
 
@@ -235,12 +533,45 @@ namespace AKStreamKeeper
                     string h = AKStreamWebUri.Host.ToString();
                     string p = AKStreamWebUri.Port.ToString();
 
+                    var ffmpeg_temp = data["ffmpeg_templete"]; //启用ffmpeg_templete
+                    if (ffmpeg_temp == null)
+                    {
+                        SectionData ff = new SectionData("ffmpeg_templete");
+                        KeyData ffkey = new KeyData("rtsp_tcp2flv");
+                        ffkey.Value = $"%s -re -rtsp_transport tcp -i %s -vcodec copy -acodec copy -f flv -y  %s";
+                        ff.Keys.AddKey(ffkey);
+                        data.Sections.Add(ff);
+                    }
+
+                    var ffkey_temp = data["ffmpeg_templete"]["rtsp_tcp2flv"];
+                    if (UtilsHelper.StringIsNullEx(ffkey_temp))
+                    {
+                        data["ffmpeg_templete"]["rtsp_tcp2flv"] =
+                            $"%s -re -rtsp_transport tcp -i %s -vcodec copy -acodec copy -f flv -y  %s";
+                    }
+
+                    ffkey_temp = data["ffmpeg_templete"]["ffmpeg2flv"];
+                    if (UtilsHelper.StringIsNullEx(ffkey_temp))
+                    {
+                        data["ffmpeg_templete"]["ffmpeg2flv"] =
+                            $"%s -re  -i %s -vcodec copy -acodec copy -f flv -y  %s";
+                    }
+
                     data["hook"].RemoveAllKeys();
+                    if (Common.IsDebug)
+                    {
+                        data["api"]["apiDebug"] = "1";
+                    }
+                    else
+                    {
+                        data["api"]["apiDebug"] = "0";
+                    }
+
+
                     data["hook"]["enable"] = "1";
                     data["hook"]["on_flow_report"] =
                         $"http://{h}:{p}/MediaServer/WebHook/OnFlowReport"; //流量统计
                     data["hook"]["on_http_access"] = "";
-                    //  $"http://{h}:{p}/MediaServer/WebHook/OnHttpAccess"; //http事件
                     data["hook"]["on_play"] =
                         $"http://{h}:{p}/MediaServer/WebHook/OnPlay"; //有流被客户端播放时
                     data["hook"]["on_publish"] =
@@ -250,9 +581,7 @@ namespace AKStreamKeeper
                     data["hook"]["on_record_ts"] =
                         $"http://{h}:{p}/MediaServer/WebHook/OnRecordTs"; //当录制ts完成时
                     data["hook"]["on_rtsp_auth"] = "";
-                    // $"http://{h}:{p}/MediaServer/WebHook/OnRtspAuth"; //rtsp鉴权
                     data["hook"]["on_rtsp_realm"] = "";
-                    //  $"http://{h}:{p}/MediaServer/WebHook/OnRtspRealm"; //rtsp专用鉴权
                     data["hook"]["on_shell_login"] =
                         $"http://{h}:{p}/MediaServer/WebHook/OnShellLogin"; //shell鉴权
                     data["hook"]["on_stream_changed"] =
@@ -260,14 +589,26 @@ namespace AKStreamKeeper
                     data["hook"]["on_stream_none_reader"] =
                         $"http://{h}:{p}/MediaServer/WebHook/OnStreamNoneReader"; //流无人观看时
                     data["hook"]["on_stream_not_found"] = "";
-                    //  $"http://{h}:{p}/MediaServer/WebHook/OnStreamNotFound"; //请求没有找到对应流的时候
                     data["hook"]["on_server_started"] = "";
-                    //  $"http://{h}:{p}/MediaServer/WebHook/OnServerStarted"; //当流媒体启动时
-                    data["hook"]["timeoutSec"] = "5"; //httpclient超时时间5秒
-                    data["general"]["flowThreshold"] = "1"; //当用户超过1byte流量时，将触发on_flow_report的webhook(/WebHook/OnStop)
+                    data["hook"]["timeoutSec"] = "20"; //httpclient超时时间20秒
+                    data["general"]["flowThreshold"] = "0"; //当用户超过1byte流量时，将触发on_flow_report的webhook(/WebHook/OnStop)
                     data["ffmpeg"]["bin"] = Common.AkStreamKeeperConfig.FFmpegPath;
                     data["ffmpeg"]["cmd"] = "%s -re -i %s -vcodec copy -acodec copy -f flv -y  %s";
                     data["ffmpeg"]["snap"] = "%s -i %s -y -f mjpeg -t 0.001 %s";
+                    if (Common.AkStreamKeeperConfig.DisableShell == true)
+                    {
+                        data["shell"]["port"] = "0";
+                    }
+                    else
+                    {
+                        data["shell"]["port"] = "9000";
+                    }
+
+                    if (Common.AkStreamKeeperConfig.RecordSec != null && Common.AkStreamKeeperConfig.RecordSec > 0)
+                    {
+                        data["record"]["fileSecond"] = Common.AkStreamKeeperConfig.RecordSec.ToString();
+                    }
+
                     parser.WriteFile(_configPath, data);
                     return true;
                 }
@@ -690,7 +1031,7 @@ namespace AKStreamKeeper
                 tmpPro.RunProcess("/bin/bash",
                     $"-c 'killall -1 {Path.GetFileNameWithoutExtension(_process.StartInfo.FileName)}'", 1000, out _,
                     out _);
-                Logger.Info(
+                 GCommon.Logger.Info(
                     $"[{Common.LoggerHead}]->重新加载流媒体服务器配置文件(热加载)->{_pid}");
                 return _process.Id;
             }
@@ -706,7 +1047,7 @@ namespace AKStreamKeeper
         {
             if (_isRunning)
             {
-                Logger.Info(
+                 GCommon.Logger.Info(
                     $"[{Common.LoggerHead}]->启动流媒体服务器(当前正在运行)->{_pid}");
                 return _pid;
             }
@@ -716,11 +1057,28 @@ namespace AKStreamKeeper
             Process ret;
             if (binDir.Trim().Equals(configDir.Trim()))
             {
-                ret = _mediaServerProcessHelper.RunProcess(_binPath, "");
+                if (_akStreamKeeperConfig != null && _akStreamKeeperConfig.UseSsl &&
+                    !string.IsNullOrEmpty(_akStreamKeeperConfig.ZLMediakitSSLFilePath))
+                {
+                    ret = _mediaServerProcessHelper.RunProcess(_binPath, $"-s {_akStreamKeeperConfig.ZLMediakitSSLFilePath}");
+                }
+                else
+                {
+                    ret = _mediaServerProcessHelper.RunProcess(_binPath, "");
+                }
             }
             else
             {
-                ret = _mediaServerProcessHelper.RunProcess(_binPath, $"-c {_configPath}");
+                if (_akStreamKeeperConfig != null && _akStreamKeeperConfig.UseSsl &&
+                    !string.IsNullOrEmpty(_akStreamKeeperConfig.ZLMediakitSSLFilePath))
+                {
+                    ret = _mediaServerProcessHelper.RunProcess(_binPath, $"-c {_configPath} -s {_akStreamKeeperConfig.ZLMediakitSSLFilePath}");
+                }
+                else
+                {
+                    ret = _mediaServerProcessHelper.RunProcess(_binPath, $"-c {_configPath}");
+                }
+               
             }
 
             if (ret != null && !ret.HasExited)
@@ -728,12 +1086,12 @@ namespace AKStreamKeeper
                 _process = ret;
                 _pid = _process.Id;
                 _isSelfClose = false;
-                Logger.Info(
+                 GCommon.Logger.Info(
                     $"[{Common.LoggerHead}]->启动流媒体服务器成功->{_pid}");
                 return _process.Id;
             }
 
-            Logger.Error(
+             GCommon.Logger.Error(
                 $"[{Common.LoggerHead}]->启动流媒体服务器失败");
             return -1;
         }
@@ -747,7 +1105,7 @@ namespace AKStreamKeeper
             _pid = -1;
             _isSelfClose = true;
             var r = _mediaServerProcessHelper.KillProcess(_process);
-            Logger.Info(
+             GCommon.Logger.Info(
                 $"[{Common.LoggerHead}]->终止流媒体服务器运行->{r}");
             return r;
         }
@@ -778,7 +1136,7 @@ namespace AKStreamKeeper
         {
             if (e.Data != null)
             {
-                Logger.Debug(
+                 GCommon.Logger.Debug(
                     $"[{Common.LoggerHead}]->[ZLMediaKit]->{e.Data}");
             }
         }
@@ -787,7 +1145,7 @@ namespace AKStreamKeeper
         {
             if (e.Data != null)
             {
-                Logger.Error(
+                 GCommon.Logger.Error(
                     $"[{Common.LoggerHead}]->[ZLMediaKit]->{e.Data}");
             }
         }

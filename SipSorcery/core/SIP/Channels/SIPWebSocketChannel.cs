@@ -29,6 +29,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -54,9 +55,7 @@ namespace SIPSorcery.SIP
     public class SIPWebSocketChannel : SIPChannel
     {
         private const int CLOSE_TIMEOUT = 5000;
-
-        public const string
-            SIP_Sec_WebSocket_Protocol = "sip"; // Web socket protocol string for SIP as defined in RFC7118.
+        public const string SIP_Sec_WebSocket_Protocol = "sip"; // Web socket protocol string for SIP as defined in RFC7118.
 
         /// <summary>
         /// The web socket server instantiates an instance of this class for each web socket client that connects. The methods 
@@ -137,21 +136,32 @@ namespace SIPSorcery.SIP
         /// Maintains a list of current ingress web socket connections across for this web socket server. This allows the SIP transport
         /// layer to quickly match a channel where the same connection must be re-used.
         /// </summary>
-        private ConcurrentDictionary<string, SIPMessagWebSocketBehavior> m_ingressConnections =
-            new ConcurrentDictionary<string, SIPMessagWebSocketBehavior>();
+        private ConcurrentDictionary<string, SIPMessagWebSocketBehavior> m_ingressConnections = new ConcurrentDictionary<string, SIPMessagWebSocketBehavior>();
 
         private CancellationTokenSource m_cts = new CancellationTokenSource();
+
+        public SIPWebSocketChannel(
+            IPEndPoint endPoint,
+            X509Certificate2 certificate) : this(endPoint, SIPConstants.DEFAULT_ENCODING, SIPConstants.DEFAULT_ENCODING, certificate)
+        {
+
+        }
 
         /// <summary>
         /// Creates a SIP channel to listen for and send SIP messages over a web socket communications layer.
         /// </summary>
         /// <param name="endPoint">The IP end point to listen on and send from.</param>
-        public SIPWebSocketChannel(IPEndPoint endPoint, X509Certificate2 certificate) : base()
+        /// <param name="sipEncoding"></param>
+        /// <param name="sipBodyEncoding"></param>
+        public SIPWebSocketChannel(
+            IPEndPoint endPoint,
+            Encoding sipEncoding,
+            Encoding sipBodyEncoding, 
+            X509Certificate2 certificate) : base(sipEncoding, sipBodyEncoding)
         {
             if (endPoint == null)
             {
-                throw new ArgumentNullException("endPoint",
-                    "The end point must be specified when creating a SIPWebSocketChannel.");
+                throw new ArgumentNullException("endPoint", "The end point must be specified when creating a SIPWebSocketChannel.");
             }
 
             ListeningIPAddress = endPoint.Address;
@@ -190,8 +200,7 @@ namespace SIPSorcery.SIP
 
         public SIPWebSocketChannel(IPAddress listenAddress, int listenPort)
             : this(new IPEndPoint(listenAddress, listenPort), null)
-        {
-        }
+        { }
 
         /// <summary>
         /// Creates a new secure web socket server (e.g. wss://localhost).
@@ -203,8 +212,7 @@ namespace SIPSorcery.SIP
         /// which typically involved checking that the hostname of the server matches the certificate's common name.</param>
         public SIPWebSocketChannel(IPAddress listenAddress, int listenPort, X509Certificate2 certificate)
             : this(new IPEndPoint(listenAddress, listenPort), certificate)
-        {
-        }
+        { }
 
         /// <summary>
         /// Records a new client connection in the list. This allows responses or subsequent requests to the same SIP agent
@@ -226,8 +234,7 @@ namespace SIPSorcery.SIP
         /// <param name="buffer">The data to send.</param>
         /// <param name="connectionIDHint">The ID of the specific web socket connection to try and send the message on.</param>
         /// <returns>If no errors SocketError.Success otherwise an error value.</returns>
-        public override async Task<SocketError> SendAsync(SIPEndPoint destinationEndPoint, byte[] buffer,
-            string connectionIDHint)
+        public override async Task<SocketError> SendAsync(SIPEndPoint destinationEndPoint, byte[] buffer, bool canInitiateConnection, string connectionIDHint)
         {
             if (destinationEndPoint == null)
             {
@@ -235,8 +242,7 @@ namespace SIPSorcery.SIP
             }
             else if (buffer == null || buffer.Length == 0)
             {
-                throw new ArgumentException("buffer",
-                    "The buffer must be set and non empty for Send in SIPWebSocketChannel.");
+                throw new ArgumentException("buffer", "The buffer must be set and non empty for Send in SIPWebSocketChannel.");
             }
 
             try
@@ -263,11 +269,9 @@ namespace SIPSorcery.SIP
         /// <summary>
         /// Not implemented for the WebSocket channel.
         /// </summary>
-        public override Task<SocketError> SendSecureAsync(SIPEndPoint dstEndPoint, byte[] buffer,
-            string serverCertificateName, string connectionIDHint)
+        public override Task<SocketError> SendSecureAsync(SIPEndPoint dstEndPoint, byte[] buffer, string serverCertificateName, bool canInitiateConnection, string connectionIDHint)
         {
-            throw new NotImplementedException(
-                "This Send method is not available in the SIP Web Socket channel, please use an alternative overload.");
+            throw new NotImplementedException("This Send method is not available in the SIP Web Socket channel, please use an alternative overload.");
         }
 
         /// <summary>
@@ -295,8 +299,7 @@ namespace SIPSorcery.SIP
         /// </summary>
         public override bool HasConnection(Uri serverUri)
         {
-            throw new NotImplementedException(
-                "This HasConnection method is not available in the SIP Web Socket channel, please use an alternative overload.");
+            throw new NotImplementedException("This HasConnection method is not available in the SIP Web Socket channel, please use an alternative overload.");
         }
 
         /// <summary>
@@ -343,7 +346,7 @@ namespace SIPSorcery.SIP
             }
             catch (Exception excp)
             {
-                logger.LogWarning("Exception SIPWebSocketChannel Close. " + excp.Message);
+                logger.LogWarning(excp, "Exception SIPWebSocketChannel Close. " + excp.Message);
             }
         }
 
@@ -375,8 +378,7 @@ namespace SIPSorcery.SIP
 
             if (client == null)
             {
-                client = m_ingressConnections.Where(x => x.Value.Context.UserEndPoint.Equals(destinationEndPoint))
-                    .Select(x => x.Value).FirstOrDefault();
+                client = m_ingressConnections.Where(x => x.Value.Context.UserEndPoint.Equals(destinationEndPoint)).Select(x => x.Value).FirstOrDefault();
             }
 
             return client;

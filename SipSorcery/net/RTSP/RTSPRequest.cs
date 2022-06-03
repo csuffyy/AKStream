@@ -56,8 +56,7 @@ namespace SIPSorcery.Net
         public IPEndPoint ReceivedFrom;
 
         private RTSPRequest()
-        {
-        }
+        { }
 
         public RTSPRequest(RTSPMethodsEnum method, string url)
         {
@@ -94,8 +93,7 @@ namespace SIPSorcery.Net
             return ParseRTSPRequest(rtspMessage, out dontCare);
         }
 
-        public static RTSPRequest ParseRTSPRequest(RTSPMessage rtspMessage,
-            out RTSPRequestParserError requestParserError)
+        public static RTSPRequest ParseRTSPRequest(RTSPMessage rtspMessage, out RTSPRequestParserError requestParserError)
         {
             requestParserError = RTSPRequestParserError.None;
             string urlStr = null;
@@ -124,11 +122,8 @@ namespace SIPSorcery.Net
                     urlStr = statusLine.Substring(0, secondSpacePosn);
 
                     rtspRequest.URL = RTSPURL.ParseRTSPURL(urlStr);
-                    rtspRequest.RTSPVersion = statusLine.Substring(secondSpacePosn, statusLine.Length - secondSpacePosn)
-                        .Trim();
-                    rtspRequest.Header = (rtspMessage.RTSPHeaders != null)
-                        ? RTSPHeader.ParseRTSPHeaders(rtspMessage.RTSPHeaders)
-                        : new RTSPHeader(0, null);
+                    rtspRequest.RTSPVersion = statusLine.Substring(secondSpacePosn, statusLine.Length - secondSpacePosn).Trim();
+                    rtspRequest.Header = (rtspMessage.RTSPHeaders != null) ? RTSPHeader.ParseRTSPHeaders(rtspMessage.RTSPHeaders) : new RTSPHeader(0, null);
                     rtspRequest.Body = rtspMessage.Body;
 
                     return rtspRequest;

@@ -8,11 +8,20 @@ namespace LibZLMediaKitMediaServer
 {
     public class KeeperWebApi
     {
-        private string _ipAddress;
-        private ushort _webApiPort;
         private string _accessKey;
         private string _baseUrl;
         private int _httpClientTimeout;
+        private string _ipAddress;
+        private ushort _webApiPort;
+
+        public KeeperWebApi(string ipAddress, ushort webApiPort, string accessKey, int httpClientTimeoutSec = 5)
+        {
+            _ipAddress = ipAddress;
+            _webApiPort = webApiPort;
+            _accessKey = accessKey;
+            _baseUrl = $"http://{_ipAddress}:{_webApiPort}";
+            _httpClientTimeout = httpClientTimeoutSec * 1000;
+        }
 
         public string IpAddress
         {
@@ -38,13 +47,309 @@ namespace LibZLMediaKitMediaServer
             set => _httpClientTimeout = value;
         }
 
-        public KeeperWebApi(string ipAddress, ushort webApiPort, string accessKey, int httpClientTimeoutSec = 5)
+
+        /// <summary>
+        /// 修改ffmpeg模板
+        /// </summary>
+        /// <param name="tmplate"></param>
+        /// <param name="rs"></param>
+        /// <returns></returns>
+        public bool ModifyFFmpegTemplate(KeyValuePair<string, string> tmplate, out ResponseStruct rs)
         {
-            _ipAddress = ipAddress;
-            _webApiPort = webApiPort;
-            _accessKey = accessKey;
-            _baseUrl = $"http://{_ipAddress}:{_webApiPort}";
-            _httpClientTimeout = httpClientTimeoutSec * 1000;
+            rs = new ResponseStruct()
+            {
+                Code = ErrorNumber.None,
+                Message = ErrorMessage.ErrorDic![ErrorNumber.None],
+            };
+            string url = $"{_baseUrl}/ApiService/ModifyFFmpegTemplate?templateName=" + tmplate.Key + "&templateValue=" +
+                         tmplate.Value;
+            try
+            {
+                Dictionary<string, string> headers = new Dictionary<string, string>();
+                headers.Add("AccessKey", _accessKey);
+                var httpRet = NetHelper.HttpGetRequest(url, headers, "utf-8", _httpClientTimeout);
+                if (!string.IsNullOrEmpty(httpRet))
+                {
+                    if (UtilsHelper.HttpClientResponseIsNetWorkError(httpRet))
+                    {
+                        rs = new ResponseStruct()
+                        {
+                            Code = ErrorNumber.Sys_HttpClientTimeout,
+                            Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_HttpClientTimeout],
+                        };
+                        return false;
+                    }
+
+                    bool isOk = false;
+                    var ret = bool.TryParse(httpRet, out isOk);
+                    if (ret)
+                    {
+                        return isOk;
+                    }
+                }
+                else
+                {
+                    rs = new ResponseStruct()
+                    {
+                        Code = ErrorNumber.MediaServer_WebApiDataExcept,
+                        Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_WebApiDataExcept],
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                rs = new ResponseStruct()
+                {
+                    Code = ErrorNumber.MediaServer_WebApiExcept,
+                    Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_WebApiExcept],
+                    ExceptMessage = ex.Message,
+                    ExceptStackTrace = ex.StackTrace,
+                };
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// 获取ffmpeg模板列表
+        /// </summary>
+        /// <param name="rs"></param>
+        /// <returns></returns>
+        public List<KeyValuePair<string, string>> GetFFmpegTemplateList(out ResponseStruct rs)
+        {
+            rs = new ResponseStruct()
+            {
+                Code = ErrorNumber.None,
+                Message = ErrorMessage.ErrorDic![ErrorNumber.None],
+            };
+            string url = $"{_baseUrl}/ApiService/GetFFmpegTemplateList";
+            try
+            {
+                Dictionary<string, string> headers = new Dictionary<string, string>();
+                headers.Add("AccessKey", _accessKey);
+                var httpRet = NetHelper.HttpGetRequest(url, headers, "utf-8", _httpClientTimeout);
+                if (!string.IsNullOrEmpty(httpRet))
+                {
+                    if (UtilsHelper.HttpClientResponseIsNetWorkError(httpRet))
+                    {
+                        rs = new ResponseStruct()
+                        {
+                            Code = ErrorNumber.Sys_HttpClientTimeout,
+                            Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_HttpClientTimeout],
+                        };
+                        return null;
+                    }
+
+                    var reslist = JsonHelper.FromJson<List<KeyValuePair<string, string>>>(httpRet);
+                    if (reslist != null)
+                    {
+                        return reslist;
+                    }
+
+                    rs = new ResponseStruct()
+                    {
+                        Code = ErrorNumber.MediaServer_WebApiDataExcept,
+                        Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_WebApiDataExcept],
+                        ExceptMessage = httpRet,
+                        ExceptStackTrace = "",
+                    };
+                }
+                else
+                {
+                    return null;
+                }
+            }
+            catch (Exception ex)
+            {
+                rs = new ResponseStruct()
+                {
+                    Code = ErrorNumber.MediaServer_WebApiExcept,
+                    Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_WebApiExcept],
+                    ExceptMessage = ex.Message,
+                    ExceptStackTrace = ex.StackTrace,
+                };
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// 删除ffmpeg模板
+        /// </summary>
+        /// <param name="tmplate"></param>
+        /// <param name="rs"></param>
+        /// <returns></returns>
+        public bool DelFFmpegTemplate(string tmplateName, out ResponseStruct rs)
+        {
+            rs = new ResponseStruct()
+            {
+                Code = ErrorNumber.None,
+                Message = ErrorMessage.ErrorDic![ErrorNumber.None],
+            };
+            string url = $"{_baseUrl}/ApiService/DelFFmpegTemplate?templateName=" + tmplateName;
+            try
+            {
+                Dictionary<string, string> headers = new Dictionary<string, string>();
+                headers.Add("AccessKey", _accessKey);
+                var httpRet = NetHelper.HttpGetRequest(url, headers, "utf-8", _httpClientTimeout);
+                if (!string.IsNullOrEmpty(httpRet))
+                {
+                    if (UtilsHelper.HttpClientResponseIsNetWorkError(httpRet))
+                    {
+                        rs = new ResponseStruct()
+                        {
+                            Code = ErrorNumber.Sys_HttpClientTimeout,
+                            Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_HttpClientTimeout],
+                        };
+                        return false;
+                    }
+
+                    bool isOk = false;
+                    var ret = bool.TryParse(httpRet, out isOk);
+                    if (ret)
+                    {
+                        return isOk;
+                    }
+                }
+                else
+                {
+                    rs = new ResponseStruct()
+                    {
+                        Code = ErrorNumber.MediaServer_WebApiDataExcept,
+                        Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_WebApiDataExcept],
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                rs = new ResponseStruct()
+                {
+                    Code = ErrorNumber.MediaServer_WebApiExcept,
+                    Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_WebApiExcept],
+                    ExceptMessage = ex.Message,
+                    ExceptStackTrace = ex.StackTrace,
+                };
+            }
+
+            return false;
+        }
+
+
+        /// <summary>
+        /// 添加ffmpeg模板
+        /// </summary>
+        /// <param name="tmplate"></param>
+        /// <param name="rs"></param>
+        /// <returns></returns>
+        public bool AddFFmpegTemplate(KeyValuePair<string, string> tmplate, out ResponseStruct rs)
+        {
+            rs = new ResponseStruct()
+            {
+                Code = ErrorNumber.None,
+                Message = ErrorMessage.ErrorDic![ErrorNumber.None],
+            };
+            string url = $"{_baseUrl}/ApiService/AddFFmpegTemplate?templateName=" + tmplate.Key + "&templateValue=" +
+                         tmplate.Value;
+            try
+            {
+                Dictionary<string, string> headers = new Dictionary<string, string>();
+                headers.Add("AccessKey", _accessKey);
+                var httpRet = NetHelper.HttpGetRequest(url, headers, "utf-8", _httpClientTimeout);
+                if (!string.IsNullOrEmpty(httpRet))
+                {
+                    if (UtilsHelper.HttpClientResponseIsNetWorkError(httpRet))
+                    {
+                        rs = new ResponseStruct()
+                        {
+                            Code = ErrorNumber.Sys_HttpClientTimeout,
+                            Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_HttpClientTimeout],
+                        };
+                        return false;
+                    }
+
+                    bool isOk = false;
+                    var ret = bool.TryParse(httpRet, out isOk);
+                    if (ret)
+                    {
+                        return isOk;
+                    }
+                }
+                else
+                {
+                    rs = new ResponseStruct()
+                    {
+                        Code = ErrorNumber.MediaServer_WebApiDataExcept,
+                        Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_WebApiDataExcept],
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                rs = new ResponseStruct()
+                {
+                    Code = ErrorNumber.MediaServer_WebApiExcept,
+                    Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_WebApiExcept],
+                    ExceptMessage = ex.Message,
+                    ExceptStackTrace = ex.StackTrace,
+                };
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// 获取AKStreamKeeper的版本标识
+        /// </summary>
+        /// <param name="rs"></param>
+        /// <returns></returns>
+        public string GetAKStreamKeeperVersion(out ResponseStruct rs)
+        {
+            rs = new ResponseStruct()
+            {
+                Code = ErrorNumber.None,
+                Message = ErrorMessage.ErrorDic![ErrorNumber.None],
+            };
+            string url = $"{_baseUrl}/ApiService/GetAKStreamKeeperVersion";
+            try
+            {
+                Dictionary<string, string> headers = new Dictionary<string, string>();
+                headers.Add("AccessKey", _accessKey);
+                var httpRet = NetHelper.HttpGetRequest(url, headers, "utf-8", _httpClientTimeout);
+                if (!string.IsNullOrEmpty(httpRet))
+                {
+                    if (UtilsHelper.HttpClientResponseIsNetWorkError(httpRet))
+                    {
+                        rs = new ResponseStruct()
+                        {
+                            Code = ErrorNumber.Sys_HttpClientTimeout,
+                            Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_HttpClientTimeout],
+                        };
+                        return null;
+                    }
+
+                    return httpRet;
+                }
+                else
+                {
+                    rs = new ResponseStruct()
+                    {
+                        Code = ErrorNumber.MediaServer_WebApiDataExcept,
+                        Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_WebApiDataExcept],
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                rs = new ResponseStruct()
+                {
+                    Code = ErrorNumber.MediaServer_WebApiExcept,
+                    Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_WebApiExcept],
+                    ExceptMessage = ex.Message,
+                    ExceptStackTrace = ex.StackTrace,
+                };
+            }
+
+            return null;
         }
 
 
@@ -136,6 +441,75 @@ namespace LibZLMediaKitMediaServer
                 Message = ErrorMessage.ErrorDic![ErrorNumber.None],
             };
             string url = $"{_baseUrl}/ApiService/ReleaseRtpPort?port={port}";
+            try
+            {
+                Dictionary<string, string> headers = new Dictionary<string, string>();
+                headers.Add("AccessKey", _accessKey);
+                var httpRet = NetHelper.HttpGetRequest(url, headers, "utf-8", _httpClientTimeout);
+                if (!string.IsNullOrEmpty(httpRet))
+                {
+                    if (UtilsHelper.HttpClientResponseIsNetWorkError(httpRet))
+                    {
+                        rs = new ResponseStruct()
+                        {
+                            Code = ErrorNumber.Sys_HttpClientTimeout,
+                            Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_HttpClientTimeout],
+                        };
+                        return false;
+                    }
+
+                    bool isOk = false;
+                    var ret = bool.TryParse(httpRet, out isOk);
+                    if (ret)
+                    {
+                        return isOk;
+                    }
+
+                    rs = new ResponseStruct()
+                    {
+                        Code = ErrorNumber.MediaServer_WebApiDataExcept,
+                        Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_WebApiDataExcept],
+                        ExceptMessage = httpRet,
+                        ExceptStackTrace = "",
+                    };
+                }
+                else
+                {
+                    rs = new ResponseStruct()
+                    {
+                        Code = ErrorNumber.MediaServer_WebApiDataExcept,
+                        Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_WebApiDataExcept],
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                rs = new ResponseStruct()
+                {
+                    Code = ErrorNumber.MediaServer_WebApiExcept,
+                    Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_WebApiExcept],
+                    ExceptMessage = ex.Message,
+                    ExceptStackTrace = ex.StackTrace,
+                };
+            }
+
+            return false;
+        }
+        
+          /// <summary>
+        /// 释放被使用过的rtp(发送)端口，以防止段时间内同样的端口被重复使用
+        /// </summary>
+        /// <param name="port"></param>
+        /// <param name="rs"></param>
+        /// <returns></returns>
+        public bool ReleaseRtpPortForSender(ushort port, out ResponseStruct rs)
+        {
+            rs = new ResponseStruct()
+            {
+                Code = ErrorNumber.None,
+                Message = ErrorMessage.ErrorDic![ErrorNumber.None],
+            };
+            string url = $"{_baseUrl}/ApiService/ReleaseRtpPortForSender?port={port}";
             try
             {
                 Dictionary<string, string> headers = new Dictionary<string, string>();
@@ -702,14 +1076,29 @@ namespace LibZLMediaKitMediaServer
                 Dictionary<string, string> headers = new Dictionary<string, string>();
                 headers.Add("AccessKey", _accessKey);
                 var httpRet = NetHelper.HttpGetRequest(url, headers, "utf-8", _httpClientTimeout);
-                if (!string.IsNullOrEmpty(httpRet) && httpRet.Trim().ToUpper().Equals("OK"))
+                if (!string.IsNullOrEmpty(httpRet))
                 {
-                    return true;
+                    
+                    if (UtilsHelper.HttpClientResponseIsNetWorkError(httpRet))
+                    {
+                        rs = new ResponseStruct()
+                        {
+                            Code = ErrorNumber.Sys_HttpClientTimeout,
+                            Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_HttpClientTimeout],
+                        };
+                        return false;
+                    }
+                    if (httpRet.Trim().ToUpper().Equals("OK"))
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        return false;
+                    }
                 }
-                else
-                {
-                    return false;
-                }
+
+               
             }
             catch (Exception ex)
             {
@@ -874,6 +1263,89 @@ namespace LibZLMediaKitMediaServer
             return 0;
         }
 
+        
+          /// <summary>
+        /// 获取一个可用的rtp(发送)端口（偶数端口）
+        /// </summary>
+        /// <param name="rs"></param>
+        /// <param name="min"></param>
+        /// <param name="max"></param>
+        /// <returns></returns>
+        public ushort GuessAnRtpPortForSender(out ResponseStruct rs, ushort? min = 0, ushort? max = 0)
+        {
+            rs = new ResponseStruct()
+            {
+                Code = ErrorNumber.None,
+                Message = ErrorMessage.ErrorDic![ErrorNumber.None],
+            };
+            
+            string url = $"{_baseUrl}/ApiService/GuessAnRtpPortForSender";
+            url += (min != null && min > 0) ? "?min=" + min : "";
+            if (url.Contains('?'))
+            {
+                url += (max != null && max > 0) ? "&max=" + max : "";
+            }
+            else
+            {
+                url += (max != null && max > 0) ? "?max=" + max : "";
+            }
+
+            try
+            {
+                Dictionary<string, string> headers = new Dictionary<string, string>();
+                headers.Add("AccessKey", _accessKey);
+                var httpRet = NetHelper.HttpGetRequest(url, headers, "utf-8", _httpClientTimeout);
+                if (!string.IsNullOrEmpty(httpRet))
+                {
+                    if (UtilsHelper.HttpClientResponseIsNetWorkError(httpRet))
+                    {
+                        rs = new ResponseStruct()
+                        {
+                            Code = ErrorNumber.Sys_HttpClientTimeout,
+                            Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_HttpClientTimeout],
+                        };
+                        return 0;
+                    }
+
+                    ushort port = 0;
+                    var ret = ushort.TryParse(httpRet, out port);
+                    if (ret)
+                    {
+                        return port;
+                    }
+
+                    rs = new ResponseStruct()
+                    {
+                        Code = ErrorNumber.MediaServer_WebApiDataExcept,
+                        Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_WebApiDataExcept],
+                        ExceptMessage = httpRet,
+                        ExceptStackTrace = "",
+                    };
+                }
+                else
+                {
+                    rs = new ResponseStruct()
+                    {
+                        Code = ErrorNumber.MediaServer_WebApiDataExcept,
+                        Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_WebApiDataExcept],
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                rs = new ResponseStruct()
+                {
+                    Code = ErrorNumber.MediaServer_WebApiExcept,
+                    Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_WebApiExcept],
+                    ExceptMessage = ex.Message,
+                    ExceptStackTrace = ex.StackTrace,
+                };
+            }
+
+            return 0;
+        }
+
+          
         /// <summary>
         /// 获取裁剪合并任务积压列表
         /// </summary>
@@ -1018,7 +1490,7 @@ namespace LibZLMediaKitMediaServer
                 Message = ErrorMessage.ErrorDic![ErrorNumber.None],
             };
 
-            string url = $"{_baseUrl}/ApiService/AddCutOrMergeTask";
+            string url = $"{_baseUrl}/CutMergeService/AddCutOrMergeTask";
             try
             {
                 string reqData = JsonHelper.ToJson(reqKeeper);

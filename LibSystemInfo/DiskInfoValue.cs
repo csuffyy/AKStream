@@ -12,7 +12,8 @@ namespace LibSystemInfo
         /// </summary>
         public static List<DriveInfoDiy> GetDrivesInfo()
         {
-            DriveInfo[] driveInfoArr = DriveInfo.GetDrives();
+            DriveInfo[] driveInfoArr = null;
+            driveInfoArr = DriveInfo.GetDrives();
             List<DriveInfoDiy> result = new List<DriveInfoDiy>();
             foreach (var drv in driveInfoArr)
             {
@@ -26,7 +27,15 @@ namespace LibSystemInfo
                     driveInfo.Used = drv.TotalSize - drv.AvailableFreeSpace;
                     driveInfo.FreePercent = Math.Round(drv.AvailableFreeSpace * 100.00 / drv.TotalSize, 3);
                     driveInfo.UpdateTime = DateTime.Now;
-                    result.Add(driveInfo);
+                    if (!driveInfo.Name.ToLower().Trim().StartsWith("/boot") &&
+                        !driveInfo.Name.ToLower().Trim().StartsWith("/dev") &&
+                        !driveInfo.Name.ToLower().Trim().StartsWith("/run") &&
+                        !driveInfo.Name.ToLower().Trim().StartsWith("/sys") &&
+                        !driveInfo.Name.ToLower().Trim().StartsWith("/var")
+                    )
+                    {
+                        result.Add(driveInfo);
+                    }
                 }
             }
 

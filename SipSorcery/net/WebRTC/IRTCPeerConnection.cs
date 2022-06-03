@@ -141,7 +141,7 @@ namespace SIPSorcery.Net
         public string algorithm;
 
         /// <summary>
-        /// The value of the certificate fingerprint in lowercase hex string as expressed utilizing 
+        /// The value of the certificate fingerprint in lower-case hex string as expressed utilising 
         /// the syntax of 'fingerprint' in [RFC4572] Section 5.
         /// </summary>
         public string value;
@@ -230,7 +230,7 @@ namespace SIPSorcery.Net
 
         public List<RTCDtlsFingerprint> getFingerprints()
         {
-            return new List<RTCDtlsFingerprint> {DtlsUtils.Fingerprint(Certificate)};
+            return new List<RTCDtlsFingerprint> { DtlsUtils.Fingerprint(Certificate) };
         }
     }
 
@@ -249,6 +249,22 @@ namespace SIPSorcery.Net
         public List<RTCCertificate> certificates;
 
         /// <summary>
+        /// The Bouncy Castle DTLS logic enforces the use of Extended Master 
+        /// Secret Keys as per RFC7627. Some WebRTC implementations do not support
+        /// Extended Master Secret Keys (for example Kurento in Mar 2021) and this 
+        /// configuration option is made available for cases where an application
+        /// explicitly decides it's acceptable to disable them.
+        /// </summary>
+        /// <remarks>
+        /// From  https://tools.ietf.org/html/rfc7627#section-4:
+        /// "Clients and servers SHOULD NOT accept handshakes that do not use the
+        /// extended master secret, especially if they rely on features like
+        /// compound authentication that fall into the vulnerable cases described
+        /// in Section 6.1."
+        /// </remarks>
+        public bool X_DisableExtendedMasterSecretKey;
+
+        /// <summary>
         /// Size of the pre-fetched ICE pool. Defaults to 0.
         /// </summary>
         public int iceCandidatePoolSize = 0;
@@ -262,21 +278,22 @@ namespace SIPSorcery.Net
         public IPAddress X_BindAddress;
 
         /// <summary>
-        /// Optional. If the remote signalling address is known at the time of creating the peer
-        /// connection it can be used to select the interface that host ICE candidates will be
-        /// gathered on. Restricting the host candidate IP addresses to a single interface is 
-        /// as per the recommendation at:
-        /// https://tools.ietf.org/html/draft-ietf-rtcweb-ip-handling-12#section-5.2.
-        /// If this is not set then the default is to use the Internet facing interface as
-        /// returned by the OS routing table.
-        /// </summary>
-        public IPAddress X_RemoteSignallingAddress;
-
-        /// <summary>
         /// Optional. If set to true the feedback profile set in the SDP offers and answers will be
         /// UDP/TLS/RTP/SAVPF instead of UDP/TLS/RTP/SAVP.
         /// </summary>
         public bool X_UseRtpFeedbackProfile;
+
+        /// <summary>
+        /// When gathering host ICE candidates for the local machine the default behaviour is
+        /// to only use IP addresses on the interface that the OS routing table selects to connect
+        /// to the destination, or the Internet facing interface if the destination is unknown.
+        /// This default behaviour is to shield the leaking of all local IP addresses into ICE 
+        /// candidates. In some circumstances, and after weighing up the security concerns, 
+        /// it's very useful to include all interfaces in when generating the address list. 
+        /// Setting this parameter to true will cause all interfaces to be used irrespective of 
+        /// the destination address
+        /// </summary>
+        public bool X_ICEIncludeAllInterfaceAddresses;
     }
 
     /// <summary>
@@ -316,7 +333,7 @@ namespace SIPSorcery.Net
         connected
     }
 
-    interface IRTCPeerConnection
+    public interface IRTCPeerConnection
     {
         //IRTCPeerConnection(RTCConfiguration configuration = null);
         RTCSessionDescriptionInit createOffer(RTCOfferOptions options = null);

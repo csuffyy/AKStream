@@ -5,8 +5,11 @@ using LibCommon;
 using LibCommon.Structs;
 using LibCommon.Structs.DBModels;
 using LibCommon.Structs.WebRequest;
+using LibCommon.Structs.WebRequest.AKStreamKeeper;
 using LibCommon.Structs.WebResponse;
+using LibCommon.Structs.WebResponse.AKStreamKeeper;
 using LibZLMediaKitMediaServer;
+using LibZLMediaKitMediaServer.Structs.WebRequest.ZLMediaKit;
 using LibZLMediaKitMediaServer.Structs.WebResponse.ZLMediaKit;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -19,6 +22,98 @@ namespace AKStreamWeb.Controllers
     [SwaggerTag("流媒体相关接口")]
     public class MediaServerController : ControllerBase
     {
+        
+        /// <summary>
+        /// 获取当前的开放的rtpServer列表
+        /// </summary>
+        /// <param name="AccessKey"></param>
+        /// <param name="mediaServerId"></param>
+        /// <returns></returns>
+        /// <exception cref="AkStreamException"></exception>
+        [Route("ListRtpServer")]
+        [HttpGet]
+        public List<ushort> ListRtpServer(
+            [FromHeader(Name = "AccessKey")] string AccessKey, string mediaServerId )
+        {
+            ResponseStruct rs;
+            var ret = MediaServerService.ListRtpServer(mediaServerId, out rs);
+            if (!rs.Code.Equals(ErrorNumber.None))
+            {
+                throw new AkStreamException(rs);
+            }
+
+            if (ret != null && ret.Count > 0)
+            {
+                return ret;
+            }
+            else
+            {
+                return new List<ushort>();
+            }
+        }
+        
+        /// <summary>
+        /// 添加一个裁剪合并任务
+        /// </summary>
+        /// <returns></returns>
+        [Route("CutOrMergeVideoFile")]
+        [HttpPost]
+        [AuthVerify]
+        public ResKeeperCutMergeTaskResponse CutOrMergeVideoFile([FromHeader(Name = "AccessKey")] string AccessKey,
+            ReqKeeperCutOrMergeVideoFile rcmv)
+        {
+            ResponseStruct rs;
+            var ret = MediaServerService.CutOrMergeVideoFile(rcmv, out rs);
+            if (rs.Code != ErrorNumber.None)
+            {
+                throw new AkStreamException(rs);
+            }
+
+            return ret;
+        }
+
+
+        /// <summary>
+        /// 获取裁剪合并任务状态
+        /// </summary>
+        /// <returns></returns>
+        [Route("GetMergeTaskStatus")]
+        [HttpGet]
+        [AuthVerify]
+        public ResKeeperCutMergeTaskStatusResponse GetMergeTaskStatus([FromHeader(Name = "AccessKey")] string AccessKey,
+            string mediaServerId, string taskId)
+        {
+            ResponseStruct rs;
+            var ret = MediaServerService.GetMergeTaskStatus(mediaServerId, taskId, out rs);
+            if (rs.Code != ErrorNumber.None)
+            {
+                throw new AkStreamException(rs);
+            }
+
+            return ret;
+        }
+
+
+        /// <summary>
+        /// 获取裁剪合并任务积压列表
+        /// </summary>
+        /// <returns></returns>
+        [Route("GetBacklogTaskList")]
+        [HttpGet]
+        [AuthVerify]
+        public ResKeeperCutMergeTaskStatusResponseList GetBacklogTaskList(
+            [FromHeader(Name = "AccessKey")] string AccessKey, string mediaServerId)
+        {
+            ResponseStruct rs;
+            var ret = MediaServerService.GetBacklogTaskList(mediaServerId, out rs);
+            if (rs.Code != ErrorNumber.None)
+            {
+                throw new AkStreamException(rs);
+            }
+
+            return ret;
+        }
+
         /// <summary>
         /// 获取在线音视频列表信息（支持分页，不支持排序）
         /// </summary>
@@ -381,10 +476,10 @@ namespace AKStreamWeb.Controllers
         [AuthVerify]
         [Route("DeleteVideoChannel")]
         [HttpGet]
-        public bool DeleteVideoChannel([FromHeader(Name = "AccessKey")] string AccessKey, string mianId)
+        public bool DeleteVideoChannel([FromHeader(Name = "AccessKey")] string AccessKey, string mainId)
         {
             ResponseStruct rs;
-            var ret = MediaServerService.DeleteVideoChannel(mianId, out rs);
+            var ret = MediaServerService.DeleteVideoChannel(mainId, out rs);
             if (rs.Code != ErrorNumber.None)
             {
                 throw new AkStreamException(rs);
@@ -442,6 +537,30 @@ namespace AKStreamWeb.Controllers
         }
 
 
+        /// <summary>
+        /// 获取一帧视频帧
+        /// </summary>
+        /// <param name="AccessKey"></param>
+        /// <param name="mediaServerId"></param>
+        /// <param name="req"></param>
+        /// <returns>图片的base64</returns>
+        /// <exception cref="AkStreamException"></exception>
+        [AuthVerify]
+        [Route("GetStreamSnap")]
+        [HttpPost]
+        public string GetStreamSnap([FromHeader(Name = "AccessKey")] string AccessKey, string mediaServerId,
+            ReqZLMediaKitGetSnap req)
+        {
+            ResponseStruct rs;
+            var ret = MediaServerService.GetStreamSnap(mediaServerId, req, out rs);
+            if (rs.Code != ErrorNumber.None)
+            {
+                throw new AkStreamException(rs);
+            }
+
+            return ret;
+        }
+        
         /// <summary>
         /// 激活音视频通道实例
         /// </summary>

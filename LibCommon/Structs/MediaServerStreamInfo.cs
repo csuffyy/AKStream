@@ -9,10 +9,10 @@ namespace LibCommon.Structs
     [Serializable]
     public class MediaServerStreamPlayerInfo
     {
-        private string _playerId;
         private string _ipAddress = null!;
-        private ushort _port;
         private string? _params;
+        private string _playerId;
+        private ushort _port;
         private DateTime _startTime;
 
 
@@ -69,22 +69,23 @@ namespace LibCommon.Structs
     [Serializable]
     public class MediaServerStreamInfo
     {
+        private string _app = null!;
+        private bool? _isRecorded = false;
         private string _mediaServerId = null!;
         private string _mediaServerIp = null!;
-        private string _streamIp = null;
-        private string? _streamTcpId = null;
-        private ushort? _rptPort = 0;
-        private ushort _streamPort = 0;
-        private DateTime _startTime;
-        private string _vhost = null!;
-        private string _app = null!;
-        private string _stream = null!;
+        private string? _noGB28181Key = "";
         private string? _params = null;
-        private List<string> _playUrl = new List<string>();
-        private uint? ssrc;
-        private bool? _isRecorded = false;
-        private PushStreamSocketType? _pushSocketType = null;
         private List<MediaServerStreamPlayerInfo> _playerList = new List<MediaServerStreamPlayerInfo>();
+        private List<string> _playUrl = new List<string>();
+        private PushStreamSocketType? _pushSocketType = null;
+        private ushort? _rptPort = 0;
+        private DateTime _startTime;
+        private string _stream = null!;
+        private string _streamIp = null;
+        private ushort _streamPort = 0;
+        private string? _streamTcpId = null;
+        private string _vhost = null!;
+        private uint? ssrc;
 
 
         /// <summary>
@@ -215,6 +216,15 @@ namespace LibCommon.Structs
         {
             get => _isRecorded;
             set => _isRecorded = value;
+        }
+
+        /// <summary>
+        /// 用于保存非28181流拉流时返回的key
+        /// </summary>
+        public string? NoGb28181Key
+        {
+            get => _noGB28181Key;
+            set => _noGB28181Key = value;
         }
 
         /// <summary>

@@ -1,15 +1,14 @@
 using System;
 using System.Threading;
-using SystemInfoLibrary.Hardware;
-using SystemInfoLibrary.OperatingSystem;
 using LibCommon.Structs;
+using Newtonsoft.Json;
+using SystemInfoLibrary.OperatingSystem;
 
 namespace LibSystemInfo
 {
     public class SystemInfo : IDisposable
     {
         private static OperatingSystemInfo _operatingSystemInfo = OperatingSystemInfo.GetOperatingSystemInfo();
-        private static HardwareInfo _hardwareInfo = _operatingSystemInfo.Hardware;
         private static OperatingSystemType _operatingSystemType = _operatingSystemInfo.OperatingSystemType;
         private static PerformanceInfo _globalSystemInfo = new PerformanceInfo();
         private static object _lockObj = new object();
@@ -21,7 +20,7 @@ namespace LibSystemInfo
             _globalSystemInfo.Architecture = _operatingSystemInfo.Architecture;
             _globalSystemInfo.OsName = _operatingSystemInfo.Name;
             _globalSystemInfo.CpuCores = Environment.ProcessorCount;
-            _globalSystemInfo.FrameworkVersion = _operatingSystemInfo.FrameworkVersion.ToString();
+            _globalSystemInfo.FrameworkVersion = _operatingSystemInfo.Runtime.ToString();
             _globalSystemInfo.SystemType = _operatingSystemType.ToString();
             Thread thread = new Thread(GetInfo);
             thread.Start();
@@ -31,7 +30,6 @@ namespace LibSystemInfo
         {
             _abort = true;
             _operatingSystemInfo = null!;
-            _hardwareInfo = null!;
             _globalSystemInfo = null!;
             _globalSystemInfo = null!;
         }
@@ -43,15 +41,20 @@ namespace LibSystemInfo
 
         private MemoryInfo getMeminfo()
         {
-            MemoryInfo tmp = new MemoryInfo();
+            switch (_operatingSystemType)
+            {
+                case OperatingSystemType.Windows:
+                    return MemoryWinValue.GetMemoryStatus();
+                    break;
+                case OperatingSystemType.Linux:
+                    return MemoryLinuxValue.GetMemoryStatus();
+                    break;
+                case OperatingSystemType.MacOSX:
+                    return MemoryMacValue.GetMemoryStatus();
+                    break;
+            }
 
-            tmp.Total = _hardwareInfo.RAM.Total * 1024;
-            tmp.Used = _hardwareInfo.RAM.Total * 1024 - _hardwareInfo.RAM.Free * 1024;
-            tmp.Free = _hardwareInfo.RAM.Free * 1024;
-            tmp.FreePercent =
-                Math.Round(100f - (double.Parse(tmp.Used.ToString()) * 100.00 / double.Parse(tmp.Total.ToString())), 3);
-            tmp.UpdateTime = DateTime.Now;
-            return tmp;
+            return null;
         }
 
         private void GetInfo()
@@ -79,12 +82,10 @@ namespace LibSystemInfo
 
                 lock (_lockObj)
                 {
-                    if ((j % 10 == 0 || j == 1) && _operatingSystemType != OperatingSystemType.Windows) //10秒更新一次内存情况
+                    if ((j % 10 == 0 || j == 1)) //10秒更新一次内存情况
                     {
                         _operatingSystemInfo = null!;
-                        _hardwareInfo = null!;
                         _operatingSystemInfo = OperatingSystemInfo.GetOperatingSystemInfo();
-                        _hardwareInfo = _operatingSystemInfo.Hardware;
                         _operatingSystemType = _operatingSystemInfo.OperatingSystemType;
                         _globalSystemInfo.MemoryInfo = getMeminfo();
                     }
@@ -98,19 +99,13 @@ namespace LibSystemInfo
                     {
                         case OperatingSystemType.Windows:
                             _globalSystemInfo.CpuLoad = CPUWinLoadValue.CPULOAD;
-                            _globalSystemInfo.NetWorkStat = NetWorkWinValue.GetNetworkStat();
-                            if ((j % 10 == 0 || j == 1) &&
-                                _operatingSystemType == OperatingSystemType.Windows) //10秒更新一次内存情况
-                            {
-                                _globalSystemInfo.MemoryInfo = MemoryWinValue.GetMemoryStatus();
-                            }
-
+                            _globalSystemInfo.NetWorkStat = NetWorkWinValue3.GetNetworkStat();
                             break;
                         case OperatingSystemType.MacOSX:
                             _globalSystemInfo.CpuLoad = CPUMacOSLoadValue.CPULOAD;
                             _globalSystemInfo.NetWorkStat = NetWorkMacValue.GetNetworkStat();
                             break;
-                        case OperatingSystemType.Unix:
+                        case OperatingSystemType.Linux:
                             _globalSystemInfo.CpuLoad = CPULinuxLoadValue.CPULOAD;
                             _globalSystemInfo.NetWorkStat = NetWorkLinuxValue.GetNetworkStat();
                             break;
@@ -128,7 +123,7 @@ namespace LibSystemInfo
         {
             lock (_lockObj)
             {
-                return JsonHelper.ToJson(_globalSystemInfo);
+                return JsonHelper.ToJson(_globalSystemInfo, Formatting.Indented);
             }
         }
 

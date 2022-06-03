@@ -25,26 +25,26 @@ namespace SIPSorcery.Net
 
         public const int RTP_VERSION = 2;
 
-        public int Version = RTP_VERSION; // 2 bits.
-        public int PaddingFlag = 0; // 1 bit.
-        public int HeaderExtensionFlag = 0; // 1 bit.
-        public int CSRCCount = 0; // 4 bits
-        public int MarkerBit = 0; // 1 bit.
-        public int PayloadType = 0; // 7 bits.
-        public UInt16 SequenceNumber; // 16 bits.
-        public uint Timestamp; // 32 bits.
-        public uint SyncSource; // 32 bits.
-        public int[] CSRCList; // 32 bits.
-        public UInt16 ExtensionProfile; // 16 bits.
-        public UInt16 ExtensionLength; // 16 bits, length of the header extensions in 32 bit words.
+        public int Version = RTP_VERSION;                       // 2 bits.
+        public int PaddingFlag = 0;                             // 1 bit.
+        public int HeaderExtensionFlag = 0;                     // 1 bit.
+        public int CSRCCount = 0;                               // 4 bits
+        public int MarkerBit = 0;                               // 1 bit.
+        public int PayloadType = 0;                             // 7 bits.
+        public UInt16 SequenceNumber;                           // 16 bits.
+        public uint Timestamp;                                  // 32 bits.
+        public uint SyncSource;                                 // 32 bits.
+        public int[] CSRCList;                                  // 32 bits.
+        public UInt16 ExtensionProfile;                         // 16 bits.
+        public UInt16 ExtensionLength;                          // 16 bits, length of the header extensions in 32 bit words.
         public byte[] ExtensionPayload;
+
+        public int PayloadSize;
+        public byte PaddingCount;
 
         public int Length
         {
-            get
-            {
-                return MIN_HEADER_LEN + (CSRCCount * 4) + ((HeaderExtensionFlag == 0) ? 0 : 4 + (ExtensionLength * 4));
-            }
+            get { return MIN_HEADER_LEN + (CSRCCount * 4) + ((HeaderExtensionFlag == 0) ? 0 : 4 + (ExtensionLength * 4)); }
         }
 
         public RTPHeader()
@@ -62,8 +62,7 @@ namespace SIPSorcery.Net
         {
             if (packet.Length < MIN_HEADER_LEN)
             {
-                throw new ApplicationException(
-                    "The packet did not contain the minimum number of bytes for an RTP header packet.");
+                throw new ApplicationException("The packet did not contain the minimum number of bytes for an RTP header packet.");
             }
 
             UInt16 firstWord = BitConverter.ToUInt16(packet, 0);
@@ -82,13 +81,16 @@ namespace SIPSorcery.Net
                 SyncSource = BitConverter.ToUInt32(packet, 8);
             }
 
+
             Version = firstWord >> 14;
             PaddingFlag = (firstWord >> 13) & 0x1;
             HeaderExtensionFlag = (firstWord >> 12) & 0x1;
             CSRCCount = (firstWord >> 8) & 0xf;
+
             MarkerBit = (firstWord >> 7) & 0x1;
             PayloadType = firstWord & 0x7f;
 
+            int headerExtensionLength = 0;
             int headerAndCSRCLength = 12 + 4 * CSRCCount;
 
             if (HeaderExtensionFlag == 1 && (packet.Length >= (headerAndCSRCLength + 4)))
@@ -96,18 +98,32 @@ namespace SIPSorcery.Net
                 if (BitConverter.IsLittleEndian)
                 {
                     ExtensionProfile = NetConvert.DoReverseEndian(BitConverter.ToUInt16(packet, 12 + 4 * CSRCCount));
+                    headerExtensionLength += 2;
                     ExtensionLength = NetConvert.DoReverseEndian(BitConverter.ToUInt16(packet, 14 + 4 * CSRCCount));
+                    headerExtensionLength += 2 + ExtensionLength * 4;
                 }
                 else
                 {
                     ExtensionProfile = BitConverter.ToUInt16(packet, 12 + 4 * CSRCCount);
+                    headerExtensionLength += 2;
                     ExtensionLength = BitConverter.ToUInt16(packet, 14 + 4 * CSRCCount);
+                    headerExtensionLength += 2 + ExtensionLength * 4;
                 }
 
                 if (ExtensionLength > 0 && packet.Length >= (headerAndCSRCLength + 4 + ExtensionLength * 4))
                 {
                     ExtensionPayload = new byte[ExtensionLength * 4];
                     Buffer.BlockCopy(packet, headerAndCSRCLength + 4, ExtensionPayload, 0, ExtensionLength * 4);
+                }
+            }
+
+            PayloadSize = packet.Length - (headerAndCSRCLength + headerExtensionLength);
+            if (PaddingFlag == 1)
+            {
+                PaddingCount = packet[packet.Length - 1];
+                if (PaddingCount < PayloadSize)//Prevent some protocol attacks 
+                {
+                    PayloadSize -= PaddingCount;
                 }
             }
         }
@@ -125,8 +141,7 @@ namespace SIPSorcery.Net
         {
             byte[] header = new byte[Length];
 
-            UInt16 firstWord = Convert.ToUInt16(Version * 16384 + PaddingFlag * 8192 + HeaderExtensionFlag * 4096 +
-                                                CSRCCount * 256 + MarkerBit * 128 + PayloadType);
+            UInt16 firstWord = Convert.ToUInt16(Version * 16384 + PaddingFlag * 8192 + HeaderExtensionFlag * 4096 + CSRCCount * 256 + MarkerBit * 128 + PayloadType);
 
             if (BitConverter.IsLittleEndian)
             {
@@ -137,10 +152,8 @@ namespace SIPSorcery.Net
 
                 if (HeaderExtensionFlag == 1)
                 {
-                    Buffer.BlockCopy(BitConverter.GetBytes(NetConvert.DoReverseEndian(ExtensionProfile)), 0, header,
-                        12 + 4 * CSRCCount, 2);
-                    Buffer.BlockCopy(BitConverter.GetBytes(NetConvert.DoReverseEndian(ExtensionLength)), 0, header,
-                        14 + 4 * CSRCCount, 2);
+                    Buffer.BlockCopy(BitConverter.GetBytes(NetConvert.DoReverseEndian(ExtensionProfile)), 0, header, 12 + 4 * CSRCCount, 2);
+                    Buffer.BlockCopy(BitConverter.GetBytes(NetConvert.DoReverseEndian(ExtensionLength)), 0, header, 14 + 4 * CSRCCount, 2);
                 }
             }
             else

@@ -18,22 +18,51 @@ namespace LibSystemInfo
         private static ProcessHelper SystemInfoProcessHelper =
             new ProcessHelper(p_StdOutputDataReceived, null!, p_Process_Exited!);
 
-        private static long _perSendBytes = 0;
-        private static long _perRecvBytes = 0;
+        private static ulong _perSendBytes = 0;
+        private static ulong _perRecvBytes = 0;
 
         public static NetWorkStat NetWorkStat = new NetWorkStat();
+
+
+        
+        
+        static NetWorkWinValue()
+        {
+            if (File.Exists(binPath))
+            {
+                //Windows下，父亲进程退出后，子进程没有被退出
+                Process[] processes = Process.GetProcessesByName(Path.GetFileNameWithoutExtension(binPath));
+                if (processes.Length > 0)
+                {
+                    foreach (var process in processes)
+                    {
+                        if (process.HasExited == false)
+                        {
+                            process.Kill();
+                        }
+                    }
+                }
+
+                SystemInfoProcessHelper.RunProcess(binPath, "");
+            }
+            else
+            {
+                throw new FileNotFoundException(binPath + " not found.");
+            }
+        }
 
         private static void p_Process_Exited(object sender, EventArgs e)
         {
             SystemInfoProcessHelper.RunProcess(binPath, "");
+            
         }
 
         private static void p_StdOutputDataReceived(object sender, DataReceivedEventArgs e)
         {
             if (e.Data != null)
             {
-                long tmpSendBytes = 0;
-                long tmpRecvBytes = 0;
+                ulong tmpSendBytes = 0;
+                ulong tmpRecvBytes = 0;
                 string[] tmpStrArr = e.Data.Trim().Split("]-[", StringSplitOptions.RemoveEmptyEntries);
                 if (tmpStrArr.Length == 3)
                 {
@@ -47,7 +76,7 @@ namespace LibSystemInfo
                         if (tmpStr.Contains("发送"))
                         {
                             var per = tmpStr.Replace("发送:", "");
-                            if (!long.TryParse(per.Trim(), out tmpSendBytes))
+                            if (!ulong.TryParse(per.Trim(), out tmpSendBytes))
                             {
                                 break;
                             }
@@ -56,7 +85,7 @@ namespace LibSystemInfo
                         if (tmpStr.Contains("接收"))
                         {
                             var per = tmpStr.Replace("接收:", "");
-                            if (!long.TryParse(per.Trim(), out tmpRecvBytes))
+                            if (!ulong.TryParse(per.Trim(), out tmpRecvBytes))
                             {
                                 break;
                             }
@@ -82,8 +111,8 @@ namespace LibSystemInfo
                         {
                             lock (lockObj)
                             {
-                                long subSendBytes = tmpSendBytes - _perSendBytes;
-                                long subRecvBytes = tmpRecvBytes - _perRecvBytes;
+                                ulong subSendBytes = tmpSendBytes - _perSendBytes;
+                                ulong subRecvBytes = tmpRecvBytes - _perRecvBytes;
                                 _perSendBytes = tmpSendBytes;
                                 _perRecvBytes = tmpRecvBytes;
                                 NetWorkStat.CurrentRecvBytes = subRecvBytes;
@@ -95,32 +124,6 @@ namespace LibSystemInfo
                         }
                     }
                 }
-            }
-        }
-
-
-        static NetWorkWinValue()
-        {
-            if (File.Exists(binPath))
-            {
-                //Windows下，父亲进程退出后，子进程没有被退出
-                Process[] processes = Process.GetProcessesByName(Path.GetFileNameWithoutExtension(binPath));
-                if (processes.Length > 0)
-                {
-                    foreach (var process in processes)
-                    {
-                        if (process.HasExited == false)
-                        {
-                            process.Kill();
-                        }
-                    }
-                }
-
-                SystemInfoProcessHelper.RunProcess(binPath, "");
-            }
-            else
-            {
-                throw new FileNotFoundException(binPath + " not found.");
             }
         }
 

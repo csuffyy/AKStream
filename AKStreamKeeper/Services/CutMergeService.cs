@@ -35,15 +35,27 @@ namespace AKStreamKeeper.Services
                     {
                         var taskStatus = CutMergeTaskStatusList.FindLast(x => x.TaskId.Equals(taskReturn.Task.TaskId));
 
-                        taskReturn.Uri = "http://" + Common.AkStreamKeeperConfig.IpV4Address + ":" +
-                                         Common.AkStreamKeeperConfig.WebApiPort + "/" +
-                                         taskReturn.FilePath;
+                        if (string.IsNullOrEmpty(Common.AkStreamKeeperConfig.CutMergeFilePath))
+                        {
+                            taskReturn.Uri = "http://" + Common.AkStreamKeeperConfig.IpV4Address + ":" +
+                                             Common.AkStreamKeeperConfig.WebApiPort + "/" +
+                                             taskReturn.FilePath.Replace(GCommon.BaseStartPath, "").TrimStart('/');
+                        }
+                        else
+                        {
+                            taskReturn.Uri = "http://" + Common.AkStreamKeeperConfig.IpV4Address + ":" +
+                                             Common.AkStreamKeeperConfig.WebApiPort + "/" +
+                                             taskReturn.FilePath
+                                                 .Replace(Common.AkStreamKeeperConfig.CutMergeFilePath, "")
+                                                 .TrimStart('/');
+                        }
+
                         if (taskStatus != null)
                         {
                             taskStatus.PlayUrl = taskReturn.Uri;
                         }
 
-                        Logger.Debug(
+                         GCommon.Logger.Debug(
                             $"[{Common.LoggerHead}]->一个裁剪合并任务执行回调->TaskId:{taskReturn.Task.TaskId}->TaskStatus:{taskReturn.Status}->TimeConsuming:{taskReturn.TimeConsuming}->CallbakUrl:{taskReturn.Task.CallbakUrl}");
                         var postDate = JsonHelper.ToJson(taskReturn);
                         var ret = NetHelper.HttpPostRequest(taskReturn.Task.CallbakUrl!, null!, postDate);
@@ -143,7 +155,7 @@ namespace AKStreamKeeper.Services
             };
             try
             {
-                Logger.Info("接受一个裁剪合并请求 ->" + task.TaskId);
+                 GCommon.Logger.Info("接受一个裁剪合并请求 ->" + task.TaskId);
                 CutMergeTaskList.Add(task);
                 CutMergeTaskStatusList.Add(task);
                 return new ResKeeperCutMergeTaskResponse()
@@ -165,7 +177,7 @@ namespace AKStreamKeeper.Services
                     ExceptMessage = ex.Message,
                     ExceptStackTrace = ex.StackTrace,
                 };
-                Logger.Error(
+                 GCommon.Logger.Error(
                     $"[{Common.LoggerHead}]->接受一个裁剪合并请求出现异常->TaskId:{task.TaskId}->Message:{ex.Message}->StackTrace:{ex.StackTrace}");
                 return null;
             }
@@ -211,7 +223,7 @@ namespace AKStreamKeeper.Services
                 Thread.Sleep(20);
             }
 
-            Logger.Debug($"[{Common.LoggerHead}]->完成裁剪合并任务打包成TS文件->TaskId:{task.TaskId}");
+             GCommon.Logger.Debug($"[{Common.LoggerHead}]->完成裁剪合并任务打包成TS文件->TaskId:{task.TaskId}");
             return task;
         }
 
@@ -251,6 +263,10 @@ namespace AKStreamKeeper.Services
                 out string std,
                 out string err);
             task.ProcessPercentage += 40f;
+            
+            GCommon.Logger.Debug($"[{Common.LoggerHead}]->FFMPEG命令->{Common.AkStreamKeeperConfig.FFmpegPath}{args}");
+            GCommon.Logger.Debug($"[{Common.LoggerHead}]->裁剪文件列表->{File.ReadAllText(mergePath+"files.txt")}");
+            
             if (retRun && (!string.IsNullOrEmpty(std) || !string.IsNullOrEmpty(err)) &&
                 File.Exists(newFilePath))
             {
@@ -258,12 +274,12 @@ namespace AKStreamKeeper.Services
                 FileInfo fileInfo = new FileInfo(newFilePath);
                 if (fileInfo.Length > 10)
                 {
-                    Logger.Debug($"[{Common.LoggerHead}]->完成裁剪合并任务合并文件->TaskId:{task.TaskId}");
+                     GCommon.Logger.Debug($"[{Common.LoggerHead}]->完成裁剪合并任务合并文件->TaskId:{task.TaskId}");
                     return newFilePath;
                 }
             }
 
-            Logger.Warn($"[{Common.LoggerHead}]->合并请求任务失败(mergeProcess失败)->TaskId:{task.TaskId}->Error:{err}");
+             GCommon.Logger.Warn($"[{Common.LoggerHead}]->合并请求任务失败(mergeProcess失败)->TaskId:{task.TaskId}->Error:{err}");
             return null!;
         }
 
@@ -296,6 +312,13 @@ namespace AKStreamKeeper.Services
                         str = str.ToLower();
                         str = str.Replace("kb", "");
                         long.TryParse(str, out find);
+                        if (find <= 0)
+                        {
+                            str = UtilsHelper.GetValue(err, "audio:", "subtitle:"); 
+                            str = str.ToLower();
+                            str = str.Replace("kb", "");
+                            long.TryParse(str, out find);
+                        }
                     }
                 }
                 else if (!string.IsNullOrEmpty(err))
@@ -304,6 +327,13 @@ namespace AKStreamKeeper.Services
                     str = str.ToLower();
                     str = str.Replace("kb", "");
                     long.TryParse(str, out find);
+                    if (find <= 0)
+                    {
+                        str = UtilsHelper.GetValue(err, "audio:", "subtitle:"); 
+                        str = str.ToLower();
+                        str = str.Replace("kb", "");
+                        long.TryParse(str, out find);
+                    }
                 }
 
                 if (find > 0)
@@ -312,12 +342,12 @@ namespace AKStreamKeeper.Services
                 }
                 else
                 {
-                    Logger.Warn(
+                     GCommon.Logger.Warn(
                         $"[{Common.LoggerHead}]->合并请求任务裁剪失败(cutProcess)->FFmpeg Cmd:{Common.AkStreamKeeperConfig.FFmpegPath} {args}->Error:{err}");
                 }
             }
 
-            Logger.Debug($"[{Common.LoggerHead}]->完成裁剪文件任务->FilePath:{cms.FilePath}");
+             GCommon.Logger.Debug($"[{Common.LoggerHead}]->完成裁剪文件任务->FilePath:{cms.FilePath}");
             return cms;
         }
 
@@ -378,7 +408,7 @@ namespace AKStreamKeeper.Services
                         {
                         }
 
-                        Logger.Debug($"[{Common.LoggerHead}]->裁剪合并任务成功->TaskId:{task.TaskId}");
+                         GCommon.Logger.Debug($"[{Common.LoggerHead}]->裁剪合并任务成功->TaskId:{task.TaskId}");
                         return new ResKeeperCutMergeTaskResponse
                         {
                             FilePath = newPath,
@@ -390,7 +420,7 @@ namespace AKStreamKeeper.Services
                         };
                     }
 
-                    Logger.Warn($"[{Common.LoggerHead}]->裁剪合并任务失败->TaskId:{task.TaskId}");
+                     GCommon.Logger.Warn($"[{Common.LoggerHead}]->裁剪合并任务失败->TaskId:{task.TaskId}");
 
                     return new ResKeeperCutMergeTaskResponse
                     {
@@ -404,7 +434,7 @@ namespace AKStreamKeeper.Services
                 }
                 catch (Exception ex)
                 {
-                    Logger.Error(
+                     GCommon.Logger.Error(
                         $"[{Common.LoggerHead}]->裁剪合并视频文件时出现异常->Message:{ex.Message}->StackTrace:{ex.StackTrace}");
                     return null!;
                 }

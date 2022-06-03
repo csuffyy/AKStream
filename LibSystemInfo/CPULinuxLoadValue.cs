@@ -12,6 +12,14 @@ namespace LibSystemInfo
         private static ProcessHelper SystemInfoProcessHelper =
             new ProcessHelper(p_StdOutputDataReceived, null!, p_Process_Exited!);
 
+        static CPULinuxLoadValue()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                SystemInfoProcessHelper.RunProcess("/usr/bin/top", "-b -p0");
+            }
+        }
+
         private static void p_Process_Exited(object sender, EventArgs e)
         {
             SystemInfoProcessHelper.RunProcess("/usr/bin/top", "-b -p0");
@@ -21,7 +29,7 @@ namespace LibSystemInfo
         {
             if (e.Data != null)
             {
-                if (e.Data.Contains("%Cpu"))
+                if (e.Data.ToString().ToUpper().Contains("CPU(S)"))
                 {
                     string tmpStr = e.Data;
                     string[] tmpStrArr = tmpStr.Split(',', StringSplitOptions.RemoveEmptyEntries);
@@ -29,7 +37,7 @@ namespace LibSystemInfo
                     {
                         foreach (var str in tmpStrArr)
                         {
-                            if (str.Contains("id"))
+                            if (str.ToLower().Contains("id"))
                             {
                                 string s = str.TrimEnd(new[] {'i', 'd'});
                                 s = s.Trim();
@@ -42,14 +50,6 @@ namespace LibSystemInfo
                         }
                     }
                 }
-            }
-        }
-
-        static CPULinuxLoadValue()
-        {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            {
-                SystemInfoProcessHelper.RunProcess("/usr/bin/top", "-b -p0");
             }
         }
     }

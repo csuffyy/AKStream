@@ -1,3 +1,4 @@
+using System;
 using LibCommon;
 using LibCommon.Structs;
 using LibCommon.Structs.DBModels;
@@ -9,6 +10,24 @@ namespace AKStreamWeb.Services
 {
     public static class SystemService
     {
+       
+        /// <summary>
+        /// 获取日志级别
+        /// </summary>
+        /// <param name="level"></param>
+        /// <param name="rs"></param>
+        /// <returns></returns>
+        public static string GetLoggerLevel(out ResponseStruct rs)
+        {
+            rs = new ResponseStruct()
+            {
+                Code = ErrorNumber.None,
+                Message = ErrorMessage.ErrorDic![ErrorNumber.None],
+            };
+
+            return  GCommon.Logger.GetLogLevel();
+        }
+        
         /// <summary>
         /// 获取系统性能信息
         /// </summary>
@@ -21,7 +40,9 @@ namespace AKStreamWeb.Services
                 Code = ErrorNumber.None,
                 Message = ErrorMessage.ErrorDic![ErrorNumber.None],
             };
-            Logger.Info($"[{Common.LoggerHead}]->获取系统性能信息成功->{JsonHelper.ToJson(Common.WebPerformanceInfo)}");
+            TimeSpan ts = DateTime.Now.Subtract(Common.StartupDateTime);
+            Common.WebPerformanceInfo.UpTimeSec = ts.TotalSeconds;
+             GCommon.Logger.Info($"[{Common.LoggerHead}]->获取系统性能信息成功->{JsonHelper.ToJson(Common.WebPerformanceInfo)}");
 
             return Common.WebPerformanceInfo;
         }
@@ -46,7 +67,7 @@ namespace AKStreamWeb.Services
                     Code = ErrorNumber.Sys_ParamsIsNotRight,
                     Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_ParamsIsNotRight],
                 };
-                Logger.Warn($"[{Common.LoggerHead}]->获取部门信息列表失败->{JsonHelper.ToJson(req)}->{JsonHelper.ToJson(rs)}");
+                 GCommon.Logger.Warn($"[{Common.LoggerHead}]->获取部门信息列表失败->{JsonHelper.ToJson(req)}->{JsonHelper.ToJson(rs)}");
                 return null;
             }
 
@@ -59,7 +80,7 @@ namespace AKStreamWeb.Services
                         Code = ErrorNumber.Sys_ParamsIsNotRight,
                         Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_ParamsIsNotRight] + ",条件要求包含下级部门数据，但部门代码条件为空",
                     };
-                    Logger.Warn(
+                     GCommon.Logger.Warn(
                         $"[{Common.LoggerHead}]->获取部门信息列表失败->{JsonHelper.ToJson(req)}->{JsonHelper.ToJson(rs)}");
 
                     return null;
@@ -74,11 +95,11 @@ namespace AKStreamWeb.Services
                 .ToList<DepartmentInfo>();
             if (ret != null)
             {
-                Logger.Info($"[{Common.LoggerHead}]->获取部门信息列表成功->{JsonHelper.ToJson(req)}->{JsonHelper.ToJson(ret)}");
+                 GCommon.Logger.Info($"[{Common.LoggerHead}]->获取部门信息列表成功->{JsonHelper.ToJson(req)}->{JsonHelper.ToJson(ret)}");
             }
             else
             {
-                Logger.Warn($"[{Common.LoggerHead}]->获取部门信息列表失败->{JsonHelper.ToJson(req)}->结果为空");
+                 GCommon.Logger.Warn($"[{Common.LoggerHead}]->获取部门信息列表失败->{JsonHelper.ToJson(req)}->结果为空");
             }
 
             return new ResGetDepartmentInfo()

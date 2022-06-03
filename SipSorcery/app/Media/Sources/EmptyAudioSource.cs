@@ -1,16 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using SIPSorceryMedia.Abstractions.V1;
+using SIPSorceryMedia.Abstractions;
 
 namespace SIPSorcery.Media
 {
+
     /// <summary>
     /// This class is handy when utilizing music when there is no need for speaker or mic integration
     /// See MusicMediaSession.
     /// </summary>
     public class EmptyAudioSource : IAudioSource
     {
+
         private readonly List<AudioFormat> _audioFormats = new List<AudioFormat>();
 #pragma warning disable CS0067
         public event EncodedSampleDelegate OnAudioSourceEncodedSample;
@@ -25,7 +27,6 @@ namespace SIPSorcery.Media
         public EmptyAudioSource()
         {
         }
-
         public EmptyAudioSource(params AudioFormat[] audioFormats)
         {
             _audioFormats = new List<AudioFormat>(audioFormats);
@@ -37,10 +38,9 @@ namespace SIPSorcery.Media
             return Task.CompletedTask;
         }
 
-        public void ExternalAudioSourceRawSample(AudioSamplingRatesEnum samplingRate, uint durationMilliseconds,
-            short[] sample)
+        public void ExternalAudioSourceRawSample(AudioSamplingRatesEnum samplingRate, uint durationMilliseconds, short[] sample)
         {
-            throw new NotImplementedException(); //not needed
+            throw new NotImplementedException();//not needed
         }
 
         public List<AudioFormat> GetAudioSourceFormats()

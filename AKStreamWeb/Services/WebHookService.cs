@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 using LibCommon;
 using LibCommon.Enums;
 using LibCommon.Structs;
@@ -10,14 +12,40 @@ using LibLogger;
 using LibZLMediaKitMediaServer;
 using LibZLMediaKitMediaServer.Structs.WebHookRequest;
 using LibZLMediaKitMediaServer.Structs.WebHookResponse;
+using LibZLMediaKitMediaServer.Structs.WebRequest.ZLMediaKit;
 
 namespace AKStreamWeb.Services
 {
     public static class WebHookService
     {
+        /// <summary>
+        /// 判断是否为回放流,如果找到返回obj信息
+        /// </summary>
+        /// <param name="stream"></param>
+        /// <returns></returns>
+        private static bool IsRecordStream(string stream, out VideoChannelRecordInfo outobj)
+        {
+            foreach (var obj in GCommon.VideoChannelRecordInfo)
+            {
+                if (obj != null && obj.RecItems != null && obj.RecItems.Count > 0)
+                {
+                    var o = obj.RecItems.FindLast(x => x.Stream.Trim().ToLower().Equals(stream.Trim().ToLower()));
+                    if (o != null)
+                    {
+                        outobj = obj;
+                        return true;
+                    }
+                }
+            }
+
+            outobj = null;
+            return false;
+        }
+
+
         public static ResToWebHookOnRecordMP4 OnRecordMp4(ReqForWebHookOnRecordMP4 req)
         {
-            Logger.Info($"[{Common.LoggerHead}]->收到WebHook-OnRecordMp4回调->{JsonHelper.ToJson(req)}");
+             GCommon.Logger.Info($"[{Common.LoggerHead}]->收到WebHook-OnRecordMp4回调->{JsonHelper.ToJson(req)}");
 
             var mediaServer = Common.MediaServerList.FindLast(x => x.MediaServerId.Equals(req.MediaServerId));
             if (mediaServer == null)
@@ -119,18 +147,18 @@ namespace AKStreamWeb.Services
                     ExceptMessage = ex.Message,
                     ExceptStackTrace = ex.StackTrace,
                 };
-                Logger.Warn(
+                 GCommon.Logger.Warn(
                     $"[{Common.LoggerHead}]->将Mp4录制文件写入数据库时异常->{JsonHelper.ToJson(req)}->{JsonHelper.ToJson(rs)}");
             }
 
-            lock (Common.VideoChannelMediaInfosLock)
+            var retobj = GCommon.Ldb.VideoOnlineInfo.FindOne(x =>
+                x.MainId.Equals(videoChannel.MainId) && x.MediaServerId.Equals(videoChannel.MediaServerId));
+            if (retobj != null && retobj.MediaServerStreamInfo != null)
             {
-                var obj = Common.VideoChannelMediaInfos.FindLast(x => x.MainId.Equals(videoChannel.MainId));
-                if (obj != null && obj.MediaServerStreamInfo != null)
-                {
-                    obj.MediaServerStreamInfo.IsRecorded = true;
-                }
+                retobj.MediaServerStreamInfo.IsRecorded = true;
+                GCommon.Ldb.VideoOnlineInfo.Update(retobj);
             }
+
 
             return new ResToWebHookOnRecordMP4()
             {
@@ -146,51 +174,81 @@ namespace AKStreamWeb.Services
         /// <returns></returns>
         public static ResToWebHookOnFlowReport OnFlowReport(ReqForWebHookOnFlowReport req)
         {
-            Logger.Info($"[{Common.LoggerHead}]->收到WebHook-OnFlowReport回调->{JsonHelper.ToJson(req)}");
-
-            var videoChannel = ORMHelper.Db.Select<VideoChannel>().Where(x => x.MainId.Equals(req.Stream))
-                .Where(x => x.MediaServerId.Equals(req.MediaServerId)).First();
-
-
-            if (videoChannel == null)
+             GCommon.Logger.Info($"[{Common.LoggerHead}]->收到WebHook-OnFlowReport回调->{JsonHelper.ToJson(req)}");
+            if (req.Player == true)
             {
-                return new ResToWebHookOnFlowReport()
+                var retobj = GCommon.Ldb.VideoOnlineInfo.FindOne(x =>
+                    x.MainId.Equals(req.Stream) && x.MediaServerId.Equals(req.MediaServerId));
+                if (retobj != null && retobj.MediaServerStreamInfo != null &&
+                    retobj.MediaServerStreamInfo.PlayerList != null &&
+                    retobj.MediaServerStreamInfo.PlayerList.Count > 0)
                 {
-                    Code = 0,
-                    Msg = "success",
-                };
-            }
-
-            if (req.Player == false)
-            {
-                lock (Common.VideoChannelMediaInfosLock)
-                {
-                    var obj = Common.VideoChannelMediaInfos.FindLast(x => x.MainId.Equals(videoChannel.MainId));
-                    if (obj != null)
-                    {
-                        Common.VideoChannelMediaInfos.Remove(obj);
-                    }
+                    retobj.MediaServerStreamInfo.PlayerList.Remove(
+                        retobj.MediaServerStreamInfo.PlayerList.FindLast(x => x.PlayerId.Equals(req.Id)));
+                    GCommon.Ldb.VideoOnlineInfo.Update(retobj);
                 }
             }
-            else
+            else if (req.Player == false)
             {
-                lock (Common.VideoChannelMediaInfosLock)
+                if (!IsRecordStream(req.Stream, out _))
                 {
-                    var obj = Common.VideoChannelMediaInfos.FindLast(x => x.MainId.Equals(videoChannel.MainId));
-                    if (obj != null && obj.MediaServerStreamInfo != null)
+                    var videoChannel = ORMHelper.Db.Select<VideoChannel>().Where(x => x.MainId.Equals(req.Stream))
+                        .Where(x => x.MediaServerId.Equals(req.MediaServerId)).First();
+                    if (videoChannel != null && videoChannel.DeviceStreamType == DeviceStreamType.GB28181)
                     {
-                        if (obj.MediaServerStreamInfo.PlayerList != null)
+                        var sipDevice =
+                            LibGB28181SipServer.Common.SipDevices.FindLast(
+                                x => x.DeviceId.Equals(videoChannel.DeviceId));
+                        if (sipDevice != null && sipDevice.SipChannels != null && sipDevice.SipChannels.Count > 0)
                         {
-                            var player = obj.MediaServerStreamInfo.PlayerList.FindLast(x =>
-                                x.PlayerId.Equals(req.Id) && x.IpAddress.Equals(req.Ip));
-                            if (player != null)
+                            var channel =
+                                sipDevice.SipChannels.FindLast(x => x.DeviceId.Equals(videoChannel.ChannelId));
+                            if (channel != null)
                             {
-                                obj.MediaServerStreamInfo.PlayerList.Remove(player);
+                                channel.PushStatus = PushStatus.IDLE;
                             }
                         }
+
+                        try
+                        {
+                            //gb28181异常断流时，要释放掉原来申请的rtp端口
+                            var mediaServer =
+                                Common.MediaServerList.FindLast(x => x.MediaServerId.Equals(req.MediaServerId));
+                            if (mediaServer != null && mediaServer.IsKeeperRunning && mediaServer.IsMediaServerRunning)
+                            {
+                                var rtpPort = GCommon.Ldb.VideoOnlineInfo.FindOne(x =>
+                                        x.MediaServerId.Equals(videoChannel.MediaServerId) &&
+                                        x.MainId.Equals(videoChannel.MainId))
+                                    .MediaServerStreamInfo!.RptPort;
+                                if (rtpPort != null && rtpPort > 0)
+                                {
+                                    ReqZLMediaKitCloseRtpPort reqZlMediaKitCloseRtpPort =
+                                        new ReqZLMediaKitCloseRtpPort()
+                                        {
+                                            Stream_Id = videoChannel.MainId,
+                                        };
+                                    mediaServer.WebApiHelper.CloseRtpPort(reqZlMediaKitCloseRtpPort, out _); //关掉rtp端口
+                                    mediaServer.KeeperWebApi.ReleaseRtpPort(
+                                        (ushort) rtpPort,
+                                        out _); //释放rtp端口
+                                }
+                            }
+                        }
+                        catch
+                        {
+                        }
                     }
+
+                    GCommon.Ldb.VideoOnlineInfo.DeleteMany(x =>
+                        x.MediaServerId.Equals(videoChannel.MediaServerId) && x.MainId.Equals(videoChannel.MainId));
+                }
+                else
+                {
+                    GCommon.Ldb.VideoOnlineInfo.DeleteMany(x =>
+                        x.MainId.Equals(req.Stream));
                 }
             }
+
 
             return new ResToWebHookOnFlowReport()
             {
@@ -207,21 +265,53 @@ namespace AKStreamWeb.Services
         /// <returns></returns>
         public static ResToWebHookOnStreamNoneReader OnStreamNoneReader(ReqForWebHookOnStreamNoneReader req)
         {
-            Logger.Info($"[{Common.LoggerHead}]->收到WebHook-OnStreamNoneReader回调->{JsonHelper.ToJson(req)}");
-
-            var videoChannel = ORMHelper.Db.Select<VideoChannel>().Where(x => x.MainId.Equals(req.Stream))
-                .Where(x => x.MediaServerId.Equals(req.MediaServerId)).First();
-            if (videoChannel.Enabled == false ||
-                (videoChannel.AutoVideo == false && videoChannel.NoPlayerBreak == true)
-            ) //当enabled为false，或者要求没有人观看时自动断流的，就断流
+            VideoChannelRecordInfo outobj = null;
+            var b = IsRecordStream(req.Stream, out outobj);
+             GCommon.Logger.Info($"[{Common.LoggerHead}]->收到WebHook-OnStreamNoneReader回调->{JsonHelper.ToJson(req)}");
+            if (b == false)
             {
-                switch (videoChannel.DeviceStreamType)
+                var videoChannel = ORMHelper.Db.Select<VideoChannel>().Where(x => x.MainId.Equals(req.Stream))
+                    .Where(x => x.MediaServerId.Equals(req.MediaServerId)).First();
+                if (videoChannel.AutoVideo == false && videoChannel.NoPlayerBreak == true) //或者要求没有人观看时自动断流的，就断流
                 {
-                    case DeviceStreamType.GB28181:
-                        SipServerService.StopLiveVideo(videoChannel.DeviceId, videoChannel.ChannelId, out _);
-                        break;
-                    default:
-                        break;
+                    var ret = MediaServerService.StreamStop(videoChannel.MediaServerId, videoChannel.MainId,
+                        out ResponseStruct rs);
+                    if (!rs.Code.Equals(ErrorNumber.None) || ret == false)
+                    {
+                         GCommon.Logger.Warn(
+                            $"[{Common.LoggerHead}]->无人观看时断流失败->{videoChannel.MainId}->{JsonHelper.ToJson(rs)}");
+                    }
+                    else
+                    {
+                         GCommon.Logger.Info($"[{Common.LoggerHead}]->无人观看时断流成功->{videoChannel.MainId}");
+                    }
+                }
+            }
+            else
+            {
+                if (outobj != null)
+                {
+                    var record =
+                        outobj.RecItems.FindLast(x => x.Stream.Trim().ToLower().Equals(req.Stream.Trim().ToLower()));
+                    if (record != null)
+                    {
+                        var ret = SipServerService.StopLiveVideo(outobj.TaskId, record.SsrcId, out ResponseStruct rs);
+                        if (rs.Code == ErrorNumber.None)
+                        {
+                            if (ret)
+                            {
+                                 GCommon.Logger.Info($"[{Common.LoggerHead}]->无人观看回调发生时断开回放流成功");
+                            }
+                            else
+                            {
+                                 GCommon.Logger.Warn($"[{Common.LoggerHead}]->无人观看回调发生时断开回放流失败");
+                            }
+                        }
+                        else
+                        {
+                             GCommon.Logger.Error($"[{Common.LoggerHead}]->无人观看回调发生时断开回放流时出现异常->{JsonHelper.ToJson(rs)}");
+                        }
+                    }
                 }
             }
 
@@ -240,47 +330,145 @@ namespace AKStreamWeb.Services
         /// <returns></returns>
         public static ResToWebHookOnStreamChange OnStreamChanged(ReqForWebHookOnStreamChange req)
         {
-            if (req.Regist == true)
+            if (req.Schema.Trim().ToLower().Equals("rtmp") && !IsRecordStream(req.Stream, out _))
             {
-                Logger.Info($"[{Common.LoggerHead}]->收到WebHook-OnStreamChanged回调->{JsonHelper.ToJson(req)}");
-                var mediaServer = Common.MediaServerList.FindLast(x => x.MediaServerId.Equals(req.MediaServerId));
-                if (mediaServer == null)
+                ServerInstance mediaServer = null;
+                if (req.Regist == true)
                 {
-                    return new ResToWebHookOnStreamChange()
+                     GCommon.Logger.Info($"[{Common.LoggerHead}]->收到WebHook-OnStreamChanged回调(流接入)->{JsonHelper.ToJson(req)}");
+                    mediaServer = Common.MediaServerList.FindLast(x => x.MediaServerId.Equals(req.MediaServerId));
+                    if (mediaServer == null)
                     {
-                        Code = 0,
-                        Msg = "success",
-                    };
-                }
+                        return new ResToWebHookOnStreamChange()
+                        {
+                            Code = 0,
+                            Msg = "success",
+                        };
+                    }
 
-                var videoChannel = ORMHelper.Db.Select<VideoChannel>().Where(x => x.MainId.Equals(req.Stream))
-                    .First();
-                if (videoChannel == null)
-                {
-                    return new ResToWebHookOnStreamChange()
+                    var videoChannel = ORMHelper.Db.Select<VideoChannel>().Where(x => x.MainId.Equals(req.Stream))
+                        .First();
+                    if (videoChannel == null)
                     {
-                        Code = 0,
-                        Msg = "success",
-                    };
-                }
+                        return new ResToWebHookOnStreamChange()
+                        {
+                            Code = 0,
+                            Msg = "success",
+                        };
+                    }
 
-                if (videoChannel.Enabled == false || videoChannel.MediaServerId.Contains("unknown_server"))
-                {
-                    return new ResToWebHookOnStreamChange()
+                    if (videoChannel.Enabled == false || videoChannel.MediaServerId.Contains("unknown_server"))
                     {
-                        Code = 0,
-                        Msg = "success",
-                    };
+                        return new ResToWebHookOnStreamChange()
+                        {
+                            Code = 0,
+                            Msg = "success",
+                        };
+                    }
+
+                    if (videoChannel.DeviceStreamType != DeviceStreamType.GB28181)
+                    {
+                        var taskStr = $"WAITONSTREAMCHANGE_{req.Stream}".Trim();
+                        WebHookNeedReturnTask webHookNeedReturnTask;
+
+                        int tick = 0;
+
+                        while (Common.WebHookNeedReturnTask.TryGetValue(taskStr, out webHookNeedReturnTask) == false &&
+                               tick <= Common.AkStreamWebConfig.WaitEventTimeOutMSec)
+                        {
+                            //AutoResetEvent没准备好，OnStreamChanged事件却来了，这里如果发现值为空，就等等
+                            tick += 10;
+                            Thread.Sleep(10);
+                        }
+
+                        var taskFound = Common.WebHookNeedReturnTask.TryGetValue(taskStr, out webHookNeedReturnTask);
+                        if (taskFound && webHookNeedReturnTask != null)
+                        {
+                            webHookNeedReturnTask.OtherObj = req;
+                            try
+                            {
+                                webHookNeedReturnTask.AutoResetEvent.Set(); //让推流业务继续走下去
+                            }
+                            catch (Exception ex)
+                            {
+                                ResponseStruct exrs = new ResponseStruct()
+                                {
+                                    Code = ErrorNumber.Sys_AutoResetEventExcept,
+                                    Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_AutoResetEventExcept],
+                                    ExceptMessage = ex.Message,
+                                    ExceptStackTrace = ex.StackTrace
+                                };
+                                 GCommon.Logger.Warn($"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
+                            }
+                        }
+                        else
+                        {
+                             GCommon.Logger.Error(
+                                $"[{Common.LoggerHead}]->WebHookNeedReturnTask异常->没有找到{videoChannel.MainId}的推拉流信息，任务异常");
+                        }
+                    }
                 }
-
-                var taskStr = $"WAITONSTREAMCHANGE_{req.Stream}";
-                WebHookNeedReturnTask webHookNeedReturnTask;
-
-                var taskFound = Common.WebHookNeedReturnTask.TryGetValue(taskStr, out webHookNeedReturnTask);
-                if (taskFound && webHookNeedReturnTask != null)
+                else
                 {
-                    webHookNeedReturnTask.OtherObj = req;
-                    webHookNeedReturnTask.AutoResetEvent.Set(); //让推流业务继续走下去
+                     GCommon.Logger.Info($"[{Common.LoggerHead}]->收到WebHook-OnStreamChanged回调(流移除)->{JsonHelper.ToJson(req)}");
+                    var videoChannel = ORMHelper.Db.Select<VideoChannel>().Where(x => x.MainId.Equals(req.Stream))
+                        .First();
+                    if (videoChannel.DeviceStreamType == DeviceStreamType.GB28181)
+                    {
+                        var sipDevice =
+                            LibGB28181SipServer.Common.SipDevices.FindLast(
+                                x => x.DeviceId.Equals(videoChannel.DeviceId));
+
+                        if (sipDevice != null && sipDevice.SipChannels != null && sipDevice.SipChannels.Count > 0)
+                        {
+                            var channel =
+                                sipDevice.SipChannels.FindLast(x => x.DeviceId.Equals(videoChannel.ChannelId));
+                            if (channel != null)
+                            {
+                                channel.PushStatus = PushStatus.IDLE;
+                            }
+                        }
+
+                        try
+                        {
+                            //gb28181异常断流时，要释放掉原来申请的rtp端口
+                            var rtpPort = GCommon.Ldb.VideoOnlineInfo.FindOne(x =>
+                                    x.MediaServerId.Equals(videoChannel.MediaServerId) &&
+                                    x.MainId.Equals(videoChannel.MainId))
+                                .MediaServerStreamInfo!.RptPort;
+                            if (rtpPort != null && rtpPort > 0)
+                            {
+                                ReqZLMediaKitCloseRtpPort reqZlMediaKitCloseRtpPort = new ReqZLMediaKitCloseRtpPort()
+                                {
+                                    Stream_Id = videoChannel.MainId,
+                                };
+                                mediaServer.WebApiHelper.CloseRtpPort(reqZlMediaKitCloseRtpPort, out _); //关掉rtp端口
+                                mediaServer.KeeperWebApi.ReleaseRtpPort(
+                                    (ushort) rtpPort,
+                                    out _); //释放rtp端口
+                            }
+                        }
+                        catch
+                        {
+                        }
+                    }
+
+                    if (videoChannel.DeviceStreamType != DeviceStreamType.GB28181)
+                    {
+                        MediaServerService.StreamStop(videoChannel.MediaServerId, videoChannel.MainId, out _);
+                    }
+
+
+                    GCommon.Ldb.VideoOnlineInfo.DeleteMany(x =>
+                        x.MediaServerId.Equals(videoChannel.MediaServerId) && x.MainId.Equals(videoChannel.MainId));
+                }
+            }
+            else if (req.Schema.Trim().ToLower().Equals("rtmp") && IsRecordStream(req.Stream, out _))
+            {
+                if (req.Regist == false)
+                {
+                    GCommon.Ldb.VideoOnlineInfo.DeleteMany(x =>
+                        x.MediaServerId.Equals(req.MediaServerId) && x.MainId.Equals(req.Stream));
                 }
             }
 
@@ -299,65 +487,33 @@ namespace AKStreamWeb.Services
         /// <returns></returns>
         public static ResToWebHookOnPlay OnPlay(ReqForWebHookOnPlay req)
         {
-            Logger.Info($"[{Common.LoggerHead}]->收到WebHook-OnPlay回调->{JsonHelper.ToJson(req)}");
+             GCommon.Logger.Info($"[{Common.LoggerHead}]->收到WebHook-OnPlay回调->{JsonHelper.ToJson(req)}");
 
-            var videoChannel = ORMHelper.Db.Select<VideoChannel>().Where(x => x.MainId.Equals(req.Stream))
-                .Where(x => x.MediaServerId.Equals(req.MediaServerId)).First();
-
-            if (videoChannel == null)
+            if (!IsRecordStream(req.Stream, out _))
             {
-                return new ResToWebHookOnPlay()
+                var videoChannel = ORMHelper.Db.Select<VideoChannel>().Where(x => x.MainId.Equals(req.Stream))
+                    .Where(x => x.MediaServerId.Equals(req.MediaServerId)).First();
+
+                if (videoChannel == null)
                 {
-                    Code = -1,
-                    Msg = "feild",
-                };
-            }
-
-            switch (videoChannel.DeviceStreamType)
-            {
-                case DeviceStreamType.GB28181:
-                    ///28181的情况
-                    var sipChannel =
-                        SipServerService.GetSipChannelById(videoChannel.DeviceId, videoChannel.ChannelId,
-                            out ResponseStruct rs);
-                    if (sipChannel != null && rs.Code.Equals(ErrorNumber.None))
+                    return new ResToWebHookOnPlay()
                     {
-                        if (sipChannel.ChannelMediaServerStreamInfo != null)
-                        {
-                            if (sipChannel.ChannelMediaServerStreamInfo.PlayerList == null)
-                            {
-                                sipChannel.ChannelMediaServerStreamInfo.PlayerList =
-                                    new List<MediaServerStreamPlayerInfo>();
-                            }
+                        Code = -1,
+                        Msg = "feild",
+                    };
+                }
 
-                            sipChannel.ChannelMediaServerStreamInfo.PlayerList.Add(new MediaServerStreamPlayerInfo()
-                            {
-                                IpAddress = req.Ip,
-                                PlayerId = req.Id,
-                                Params = req.Params,
-                                Port = (ushort) req.Port,
-                                StartTime = DateTime.Now,
-                            });
-                        }
+
+                var retobj = GCommon.Ldb.VideoOnlineInfo.FindOne(x =>
+                    x.MainId.Equals(videoChannel.MainId) && x.MediaServerId.Equals(videoChannel.MediaServerId));
+                if (retobj != null && retobj.MediaServerStreamInfo != null)
+                {
+                    if (retobj.MediaServerStreamInfo.PlayerList == null)
+                    {
+                        retobj.MediaServerStreamInfo.PlayerList = new List<MediaServerStreamPlayerInfo>();
                     }
 
-                    break;
-                default:
-                    //除28181以外的处理
-                    break;
-            }
-
-            lock (Common.VideoChannelMediaInfosLock)
-            {
-                var obj = Common.VideoChannelMediaInfos.FindLast(x => x.MainId.Equals(videoChannel.MainId));
-                if (obj != null && obj.MediaServerStreamInfo != null)
-                {
-                    if (obj.MediaServerStreamInfo.PlayerList == null)
-                    {
-                        obj.MediaServerStreamInfo.PlayerList = new List<MediaServerStreamPlayerInfo>();
-                    }
-
-                    obj.MediaServerStreamInfo.PlayerList.Add(new MediaServerStreamPlayerInfo()
+                    retobj.MediaServerStreamInfo.PlayerList.Add(new MediaServerStreamPlayerInfo()
                     {
                         IpAddress = req.Ip,
                         PlayerId = req.Id,
@@ -365,8 +521,32 @@ namespace AKStreamWeb.Services
                         Port = (ushort) req.Port,
                         StartTime = DateTime.Now,
                     });
+                    GCommon.Ldb.VideoOnlineInfo.Update(retobj);
                 }
             }
+            else
+            {
+                var retobj = GCommon.Ldb.VideoOnlineInfo.FindOne(x =>
+                    x.MainId.Equals(req.Stream));
+                if (retobj != null && retobj.MediaServerStreamInfo != null)
+                {
+                    if (retobj.MediaServerStreamInfo.PlayerList == null)
+                    {
+                        retobj.MediaServerStreamInfo.PlayerList = new List<MediaServerStreamPlayerInfo>();
+                    }
+
+                    retobj.MediaServerStreamInfo.PlayerList.Add(new MediaServerStreamPlayerInfo()
+                    {
+                        IpAddress = req.Ip,
+                        PlayerId = req.Id,
+                        Params = req.Params,
+                        Port = (ushort) req.Port,
+                        StartTime = DateTime.Now,
+                    });
+                    GCommon.Ldb.VideoOnlineInfo.Update(retobj);
+                }
+            }
+
 
             return new ResToWebHookOnPlay()
             {
@@ -383,7 +563,7 @@ namespace AKStreamWeb.Services
         /// <returns></returns>
         public static ResToWebHookOnPublish OnPublish(ReqForWebHookOnPublish req)
         {
-            Logger.Info($"[{Common.LoggerHead}]->收到WebHook-OnPublish回调->{JsonHelper.ToJson(req)}");
+             GCommon.Logger.Info($"[{Common.LoggerHead}]->收到WebHook-OnPublish回调->{JsonHelper.ToJson(req)}");
 
             var mediaServer = Common.MediaServerList.FindLast(x => x.MediaServerId.Equals(req.MediaServerId));
             if (mediaServer == null)
@@ -392,51 +572,93 @@ namespace AKStreamWeb.Services
                 {
                     Code = -1,
                     EnableHls = false,
-                    EnableMp4 = false,
+                    EnableMP4 = false,
                     Msg = "failed",
                 };
             }
 
-            var videoChannel = ORMHelper.Db.Select<VideoChannel>().Where(x => x.MainId.Equals(req.Stream))
-                .First();
-            if (videoChannel == null)
+            VideoChannel videoChannel = null;
+
+            if (!IsRecordStream(req.Stream, out _))
             {
-                return new ResToWebHookOnPublish()
+                videoChannel = ORMHelper.Db.Select<VideoChannel>().Where(x => x.MainId.Equals(req.Stream))
+                    .First();
+                if (videoChannel == null)
                 {
-                    Code = -1,
-                    EnableHls = false,
-                    EnableMp4 = false,
-                    Msg = "failed",
-                };
-            }
+                    return new ResToWebHookOnPublish()
+                    {
+                        Code = -1,
+                        EnableHls = false,
+                        EnableMP4 = false,
+                        Msg = "failed",
+                    };
+                }
 
-            if (videoChannel.Enabled == false || videoChannel.MediaServerId.Contains("unknown_server"))
-            {
-                return new ResToWebHookOnPublish()
+                if (videoChannel.Enabled == false || videoChannel.MediaServerId.Contains("unknown_server"))
                 {
-                    Code = -1,
-                    EnableHls = false,
-                    EnableMp4 = false,
-                    Msg = "failed",
-                };
+                    return new ResToWebHookOnPublish()
+                    {
+                        Code = -1,
+                        EnableHls = false,
+                        EnableMP4 = false,
+                        Msg = "failed",
+                    };
+                }
             }
 
-            var taskStr = $"WAITONPUBLISH_{req.Stream}";
-            WebHookNeedReturnTask webHookNeedReturnTask;
 
-            var taskFound = Common.WebHookNeedReturnTask.TryGetValue(taskStr, out webHookNeedReturnTask);
-            if (taskFound && webHookNeedReturnTask != null)
+            if ((videoChannel != null && videoChannel.DeviceStreamType == DeviceStreamType.GB28181) ||
+                (IsRecordStream(req.Stream, out _)))
             {
-                webHookNeedReturnTask.OtherObj = req;
-                webHookNeedReturnTask.AutoResetEvent.Set(); //让推流业务继续走下去
+                var taskStr = $"WAITONPUBLISH_{req.Stream}";
+                WebHookNeedReturnTask webHookNeedReturnTask;
+                int tick = 0;
+
+                while (Common.WebHookNeedReturnTask.TryGetValue(taskStr, out webHookNeedReturnTask) == false &&
+                       tick <= Common.AkStreamWebConfig.WaitEventTimeOutMSec)
+                {
+                    //AutoResetEvent没准备好，onpublish事件却来了，这里如果发现值为空，就等等
+                    tick += 10;
+                    Thread.Sleep(10);
+                }
+
+                var taskFound = Common.WebHookNeedReturnTask.TryGetValue(taskStr, out webHookNeedReturnTask);
+                if (taskFound && webHookNeedReturnTask != null)
+                {
+                    webHookNeedReturnTask.OtherObj = req;
+                    try
+                    {
+                        webHookNeedReturnTask.AutoResetEvent.Set(); //让推流业务继续走下去
+                    }
+                    catch (Exception ex)
+                    {
+                        ResponseStruct exrs = new ResponseStruct()
+                        {
+                            Code = ErrorNumber.Sys_AutoResetEventExcept,
+                            Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_AutoResetEventExcept],
+                            ExceptMessage = ex.Message,
+                            ExceptStackTrace = ex.StackTrace
+                        };
+                         GCommon.Logger.Warn($"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
+                    }
+                }
+
+
+                ResToWebHookOnPublish result = new ResToWebHookOnPublish();
+                result.Code = 0;
+                result.EnableHls = true;
+                result.Msg = "success";
+                result.EnableMP4 = false;
+                return result;
             }
 
-            ResToWebHookOnPublish result = new ResToWebHookOnPublish();
-            result.Code = 0;
-            result.EnableHls = true;
-            result.Msg = "success";
-            result.EnableMp4 = false;
-            return result;
+            return new ResToWebHookOnPublish()
+            {
+                Code = -1,
+                EnableHls = false,
+                EnableMP4 = false,
+                Msg = "failed",
+            };
         }
 
         /// <summary>
@@ -447,7 +669,7 @@ namespace AKStreamWeb.Services
         /// <returns></returns>
         public static ResMediaServerKeepAlive MediaServerKeepAlive(ReqMediaServerKeepAlive req, out ResponseStruct rs)
         {
-            Logger.Info(
+             GCommon.Logger.Info(
                 $"[{Common.LoggerHead}]->收到WebHook-MediaServerKeepAlive回调->{JsonHelper.ToJson(req.MediaServerId)}");
 
             ResMediaServerKeepAlive result;
@@ -488,8 +710,23 @@ namespace AKStreamWeb.Services
                 {
                     if (req.FirstPost)
                     {
-                        mediaServer.Dispose();
-                        Common.MediaServerList.Remove(mediaServer);
+                        //已经存在的mediaserver被要求重启前要停掉此流媒体所有流信息
+
+                        var removeList = GCommon.Ldb.VideoOnlineInfo
+                            .Find(x => x.MediaServerId.Equals(req.MediaServerId))
+                            .ToList();
+
+                        if (removeList != null && removeList.Count > 0)
+                        {
+                            foreach (var obj in removeList)
+                            {
+                                if (obj != null)
+                                {
+                                    MediaServerService.StreamStop(obj.MediaServerId, obj.MainId, out _);
+                                }
+                            }
+                        }
+
                         result = new ResMediaServerKeepAlive()
                         {
                             Rs = rs,
@@ -497,7 +734,9 @@ namespace AKStreamWeb.Services
                             ServerDateTime = DateTime.Now,
                             NeedRestartMediaServer = true,
                         };
-                        Logger.Debug(
+                        mediaServer.Dispose();
+                        Common.MediaServerList.Remove(mediaServer);
+                         GCommon.Logger.Debug(
                             $"[{Common.LoggerHead}]->清理MediaServerList中的的流媒体服务器实例,要求重启流媒体服务器->当前流媒体服务器数量:{Common.MediaServerList.Count}");
                         return result;
                     }
@@ -533,6 +772,7 @@ namespace AKStreamWeb.Services
                     mediaServer.RtspsPort = req.ZlmRtspsPort;
                     mediaServer.RtpPortMax = req.RtpPortMax;
                     mediaServer.RtpPortMin = req.RtpPortMin;
+                    mediaServer.RandomPort = req.RandomPort;
                     mediaServer.ServerDateTime = req.ServerDateTime;
                     mediaServer.ZlmRecordFileSec = req.ZlmRecordFileSec;
                     mediaServer.AccessKey = req.AccessKey;
@@ -571,9 +811,11 @@ namespace AKStreamWeb.Services
                     tmpMediaServer.RtspsPort = req.ZlmRtspsPort;
                     tmpMediaServer.RtpPortMax = req.RtpPortMax;
                     tmpMediaServer.RtpPortMin = req.RtpPortMin;
+                    tmpMediaServer.RandomPort = req.RandomPort;
                     tmpMediaServer.ServerDateTime = req.ServerDateTime;
                     tmpMediaServer.ZlmRecordFileSec = req.ZlmRecordFileSec;
                     tmpMediaServer.AccessKey = req.AccessKey;
+
 
                     if (req.PerformanceInfo != null) //更新性能信息
                     {

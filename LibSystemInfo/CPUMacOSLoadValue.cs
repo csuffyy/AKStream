@@ -12,6 +12,15 @@ namespace LibSystemInfo
         private static ProcessHelper SystemInfoProcessHelper =
             new ProcessHelper(p_StdOutputDataReceived, null!, p_Process_Exited!);
 
+
+        static CPUMacOSLoadValue()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                SystemInfoProcessHelper.RunProcess("/usr/bin/top", "-n0");
+            }
+        }
+
         private static void p_Process_Exited(object sender, EventArgs e)
         {
             SystemInfoProcessHelper.RunProcess("/usr/bin/top", "-n0");
@@ -21,7 +30,7 @@ namespace LibSystemInfo
         {
             if (e.Data != null)
             {
-                if (e.Data.Contains("CPU usage"))
+                if (e.Data.ToUpper().Contains("CPU USAGE"))
                 {
                     string tmpStr = e.Data;
                     tmpStr = tmpStr.Replace("CPU usage:", "", StringComparison.Ordinal);
@@ -30,7 +39,7 @@ namespace LibSystemInfo
                     {
                         foreach (var tmps in tmpStrArr)
                         {
-                            if (tmps.Contains("idle"))
+                            if (tmps.ToLower().Contains("idle"))
                             {
                                 string tmps2 = tmps.TrimEnd(new[] {'%', ' ', 'i', 'd', 'l', 'e'});
 
@@ -43,15 +52,6 @@ namespace LibSystemInfo
                         }
                     }
                 }
-            }
-        }
-
-
-        static CPUMacOSLoadValue()
-        {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            {
-                SystemInfoProcessHelper.RunProcess("/usr/bin/top", "-n0");
             }
         }
     }

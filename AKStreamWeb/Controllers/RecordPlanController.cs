@@ -6,7 +6,6 @@ using LibCommon.Structs.DBModels;
 using LibCommon.Structs.WebRequest;
 using Microsoft.AspNetCore.Mvc;
 
-
 namespace AKStreamWeb.Controllers
 {
     /// <summary>
@@ -106,7 +105,7 @@ namespace AKStreamWeb.Controllers
         /// <returns></returns>
         ///
         [Route("GetRecordPlanList")]
-        [HttpPost]
+        [HttpGet]
         public List<RecordPlan> GetRecordPlanList([FromHeader(Name = "AccessKey")] string AccessKey, string? name)
         {
             ResponseStruct rs;

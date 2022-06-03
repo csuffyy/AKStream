@@ -5,11 +5,12 @@ namespace LibZLMediaKitMediaServer.Structs.WebRequest.ZLMediaKit
     [Serializable]
     public class ReqZLMediaKitAddFFmpegProxy : ReqZLMediaKitRequestBase
     {
-        private string _src_url;
         private string _dst_url;
+        private int? _enable_hls;
+        private int? _enable_mp4;
+        private string? _ffmpeg_cmd_key;
+        private string _src_url;
         private int _timeout_ms;
-        private bool _enable_hls;
-        private bool _enable_mp4;
 
         /// <summary>
         /// 源地址
@@ -42,7 +43,7 @@ namespace LibZLMediaKitMediaServer.Structs.WebRequest.ZLMediaKit
         /// <summary>
         /// 是否开起hls录制
         /// </summary>
-        public bool Enable_Hls
+        public int? Enable_Hls
         {
             get => _enable_hls;
             set => _enable_hls = value;
@@ -51,10 +52,19 @@ namespace LibZLMediaKitMediaServer.Structs.WebRequest.ZLMediaKit
         /// <summary>
         /// 是否开起mp4录制
         /// </summary>
-        public bool Enable_Mp4
+        public int? Enable_Mp4
         {
             get => _enable_mp4;
             set => _enable_mp4 = value;
+        }
+
+        /// <summary>
+        /// ffmpeg模板名称
+        /// </summary>
+        public string? Ffmpeg_Cmd_Key
+        {
+            get => _ffmpeg_cmd_key;
+            set => _ffmpeg_cmd_key = value;
         }
     }
 }

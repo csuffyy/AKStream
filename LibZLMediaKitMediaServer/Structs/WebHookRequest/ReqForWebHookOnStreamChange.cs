@@ -1,16 +1,29 @@
 using System;
+using System.Collections.Generic;
+using LibZLMediaKitMediaServer.Structs.WebResponse.ZLMediaKit;
 
 namespace LibZLMediaKitMediaServer.Structs.WebHookRequest
 {
     [Serializable]
     public class ReqForWebHookOnStreamChange
     {
-        private string? _mediaServerId;
+        private int? _aliveSecond;
         private string? _app;
+        private long? _bytesSpeed;
+        private long? _createStamp;
+        private string? _mediaServerId;
+        private OriginSock? _originSock;
+        private OriginType? _originType;
+        private string? _originTypeStr;
+        private string? _originUrl;
+        private int? _readerCount;
+        private bool? _regist;
         private string? _schema;
         private string? _stream;
+        private int? _totalReaderCount;
+        private List<TracksItem>? _tracks;
         private string? _vhost;
-        private bool? _regist;
+
 
         public string? MediaServerId
         {
@@ -46,6 +59,66 @@ namespace LibZLMediaKitMediaServer.Structs.WebHookRequest
         {
             get => _regist;
             set => _regist = value;
+        }
+
+        public int? AliveSecond
+        {
+            get => _aliveSecond;
+            set => _aliveSecond = value;
+        }
+
+        public long? BytesSpeed
+        {
+            get => _bytesSpeed;
+            set => _bytesSpeed = value;
+        }
+
+        public long? CreateStamp
+        {
+            get => _createStamp;
+            set => _createStamp = value;
+        }
+
+        public OriginSock? OriginSock
+        {
+            get => _originSock;
+            set => _originSock = value;
+        }
+
+        public OriginType? OriginType
+        {
+            get => _originType;
+            set => _originType = value;
+        }
+
+        public string? OriginTypeStr
+        {
+            get => _originTypeStr;
+            set => _originTypeStr = value;
+        }
+
+        public string? OriginUrl
+        {
+            get => _originUrl;
+            set => _originUrl = value;
+        }
+
+        public int? ReaderCount
+        {
+            get => _readerCount;
+            set => _readerCount = value;
+        }
+
+        public int? TotalReaderCount
+        {
+            get => _totalReaderCount;
+            set => _totalReaderCount = value;
+        }
+
+        public List<TracksItem>? Tracks
+        {
+            get => _tracks;
+            set => _tracks = value;
         }
     }
 }

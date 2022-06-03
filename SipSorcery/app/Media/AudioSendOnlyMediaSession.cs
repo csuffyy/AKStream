@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 using SIPSorcery.Net;
 using SIPSorcery.SIP.App;
 using SIPSorcery.Sys;
-using SIPSorceryMedia.Abstractions.V1;
+using SIPSorceryMedia.Abstractions;
 
 namespace SIPSorcery.Media
 {
@@ -26,8 +26,7 @@ namespace SIPSorcery.Media
             : base(false, false, false, bindAddress, bindPort)
         {
             // The audio extras source is used for on-hold music.
-            AudioExtrasSource = new AudioExtrasSource(new AudioEncoder(),
-                new AudioSourceOptions {AudioSource = AudioSourcesEnum.Music});
+            AudioExtrasSource = new AudioExtrasSource(new AudioEncoder(), new AudioSourceOptions { AudioSource = AudioSourcesEnum.Music });
             AudioExtrasSource.OnAudioSourceEncodedSample += SendAudio;
 
             base.OnAudioFormatsNegotiated += AudioFormatsNegotiated;

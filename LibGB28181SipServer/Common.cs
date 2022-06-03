@@ -20,11 +20,26 @@ namespace LibGB28181SipServer
         private static string _sipServerConfigPath = GCommon.ConfigPath + "SipServerConfig.json";
         private static List<SipDevice> _sipDevices = new List<SipDevice>();
         private static ConcurrentQueue<Catalog> _tmpCatalogs = new ConcurrentQueue<Catalog>();
+        private static ConcurrentQueue<RecordInfoEx> _tmpRecItems = new ConcurrentQueue<RecordInfoEx>();
+        
 
         /// <summary>
         /// 用于操作_sipDevices时的锁
         /// </summary>
         public static object SipDevicesLock = new object();
+
+        /// <summary>
+        /// sip服务实例
+        /// </summary>
+        public static SipServer SipServer = null!;
+
+        private static ConcurrentDictionary<string, NeedReturnTask> _needResponseRequests =
+            new ConcurrentDictionary<string, NeedReturnTask>();
+
+        static Common()
+        {
+            
+        }
 
         /// <summary>
         /// sip设备列表
@@ -34,11 +49,6 @@ namespace LibGB28181SipServer
             get => _sipDevices;
             set => _sipDevices = value;
         }
-
-        /// <summary>
-        /// sip服务实例
-        /// </summary>
-        public static SipServer SipServer = null!;
 
         /// <summary>
         /// Sip网关配置实例
@@ -68,9 +78,6 @@ namespace LibGB28181SipServer
             set => _loggerHead = value;
         }
 
-        private static ConcurrentDictionary<string, NeedReturnTask> _needResponseRequests =
-            new ConcurrentDictionary<string, NeedReturnTask>();
-
         /// <summary>
         /// 需要信息回复的消息列表
         /// </summary>
@@ -88,6 +95,15 @@ namespace LibGB28181SipServer
         {
             get => _tmpCatalogs;
             set => _tmpCatalogs = value ?? throw new ArgumentNullException(nameof(value));
+        }
+
+        /// <summary>
+        /// 收到历史文件目录时先缓存在这里
+        /// </summary>
+        public static ConcurrentQueue<RecordInfoEx> TmpRecItems
+        {
+            get => _tmpRecItems;
+            set => _tmpRecItems = value ?? throw new ArgumentNullException(nameof(value));
         }
 
 
@@ -207,28 +223,23 @@ namespace LibGB28181SipServer
             {
                 return SipChannelType.Unknow;
             }
-
             int extId = int.Parse(sipChannelId.Substring(10, 3));
             if (extId == 131 || extId == 132 || extId == 137 || extId == 138 || extId == 139)
             {
                 return SipChannelType.VideoChannel;
             }
-
             if (extId == 135 || extId == 205)
             {
                 return SipChannelType.AlarmChannel;
             }
-
             if (extId == 137)
             {
                 return SipChannelType.AudioChannel;
             }
-
             if (extId >= 140 && extId <= 199)
             {
                 return SipChannelType.VideoChannel;
             }
-
             return SipChannelType.OtherChannel;
         }
 
@@ -308,10 +319,6 @@ namespace LibGB28181SipServer
                 Message = ErrorMessage.ErrorDic![ErrorNumber.Other],
             };
             return 1;
-        }
-
-        static Common()
-        {
         }
     }
 }

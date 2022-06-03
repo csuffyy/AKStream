@@ -8,7 +8,6 @@ namespace LibZLMediaKitMediaServer.Structs.WebResponse.ZLMediaKit
     [Serializable]
     public class ZLMediaKitConfigForResponse
     {
-        private string? _mediaServerId;
         private bool? _api_apiDebug;
         private string? _api_defaultSnap;
         private string? _api_secret;
@@ -17,6 +16,8 @@ namespace LibZLMediaKitMediaServer.Structs.WebResponse.ZLMediaKit
         private string? _ffmpeg_cmd;
         private string? _ffmpeg_log;
         private string? _ffmpeg_snap;
+        private string? _ffmpeg_templete_ffmpeg2flv;
+        private string? _ffmpeg_templete_rtsp_tcp2flv;
         private bool? _general_addMuteAudio;
         private bool? _general_enableVhost;
         private int? _general_flowThreshold;
@@ -64,6 +65,7 @@ namespace LibZLMediaKitMediaServer.Structs.WebResponse.ZLMediaKit
         private string? _http_rootPath;
         private int? _http_sendBufSize;
         private ushort? _http_sslport;
+        private string? _mediaServerId;
         private string? _multicast_addrMax;
         private string? _multicast_addrMin;
         private int? _multicast_udpTTL;
@@ -80,14 +82,12 @@ namespace LibZLMediaKitMediaServer.Structs.WebResponse.ZLMediaKit
         private ushort? _rtmp_port;
         private ushort? _rtmp_sslport;
         private int? _rtp_audioMtuSize;
-        private int? _rtp_clearCount;
         private ulong? _rtp_cycleMS;
-        private int? _rtp_maxRtpCount;
-        private int? _rtp_videoMtuSize;
         private bool? _rtp_Proxy_checkSource;
         private string? _rtp_Proxy_dumpDir;
         private ushort? _rtp_Proxy_port;
         private int? _rtp_Proxy_timeoutSec;
+        private int? _rtp_videoMtuSize;
         private bool? _rtsp_authBasic;
         private bool? _rtsp_directProxy;
         private int? _rtsp_handshakeSecond;
@@ -160,6 +160,20 @@ namespace LibZLMediaKitMediaServer.Structs.WebResponse.ZLMediaKit
         {
             get => _ffmpeg_snap;
             set => _ffmpeg_snap = value;
+        }
+
+        [JsonProperty("ffmpeg_templete.ffmpeg2flv")]
+        public string? Ffmpeg_Templete_Ffmpeg2Flv
+        {
+            get => _ffmpeg_templete_ffmpeg2flv;
+            set => _ffmpeg_templete_ffmpeg2flv = value;
+        }
+
+        [JsonProperty("ffmpeg_templete.rtsp_tcp2flv")]
+        public string? Ffmpeg_Templete_RtspTcp2Flv
+        {
+            get => _ffmpeg_templete_rtsp_tcp2flv;
+            set => _ffmpeg_templete_rtsp_tcp2flv = value;
         }
 
         [JsonConverter(typeof(BoolConvert))]
@@ -620,13 +634,7 @@ namespace LibZLMediaKitMediaServer.Structs.WebResponse.ZLMediaKit
             set => _rtp_audioMtuSize = value;
         }
 
-        [JsonProperty("rtp.clearCount")]
-        public int? Rtp_ClearCount
-        {
-            get => _rtp_clearCount;
-            set => _rtp_clearCount = value;
-        }
-
+       
         [JsonProperty("rtp.cycleMS")]
         public ulong? Rtp_CycleMs
         {
@@ -634,13 +642,7 @@ namespace LibZLMediaKitMediaServer.Structs.WebResponse.ZLMediaKit
             set => _rtp_cycleMS = value;
         }
 
-        [JsonProperty("rtp.maxRtpCount")]
-        public int? Rtp_MaxRtpCount
-        {
-            get => _rtp_maxRtpCount;
-            set => _rtp_maxRtpCount = value;
-        }
-
+      
         [JsonProperty("rtp.videoMtuSize")]
         public int? Rtp_VideoMtuSize
         {

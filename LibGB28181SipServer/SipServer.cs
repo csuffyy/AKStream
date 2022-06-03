@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Net;
-using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using LibCommon;
@@ -23,6 +22,16 @@ namespace LibGB28181SipServer
     public class SipServer
     {
         /// <summary>
+        /// SipTCP通道(IPV4)
+        /// </summary>
+        private SIPTCPChannel _sipTcpIpV4Channel = null!;
+
+        /// <summary>
+        /// SipTCP通道(IPV6)
+        /// </summary>
+        private SIPTCPChannel _sipTcpIpV6Channel = null!;
+
+        /// <summary>
         /// SIP传输通道
         /// </summary>
         private SIPTransport _sipTransport = null!;
@@ -37,15 +46,25 @@ namespace LibGB28181SipServer
         /// </summary>
         private SIPUDPChannel _sipUdpIpV6Channel = null!;
 
-        /// <summary>
-        /// SipTCP通道(IPV4)
-        /// </summary>
-        private SIPTCPChannel _sipTcpIpV4Channel = null!;
+        public SipServer(string outConfigPath="")
+        {
+            ResponseStruct rs;
+            GCommon.Logger.Info($"[{Common.LoggerHead}]->加载配置文件->{Common.SipServerConfigPath}");
+            if (!string.IsNullOrEmpty(outConfigPath))
+            {
+                Common.SipServerConfigPath = outConfigPath + "SipServerConfig.json";
+            }
+            var ret = Common.ReadSipServerConfig(out rs);
 
-        /// <summary>
-        /// SipTCP通道(IPV6)
-        /// </summary>
-        private SIPTCPChannel _sipTcpIpV6Channel = null!;
+            if (ret < 0 || !rs.Code.Equals(ErrorNumber.None))
+            {
+                GCommon.Logger.Error($"[{Common.LoggerHead}]->加载配置文件失败->{Common.SipServerConfigPath}");
+                throw new AkStreamException(rs);
+            }
+
+            Common.SipServer = this;
+            GCommon.Logger.Info($"[{Common.LoggerHead}]->加载配置文件成功->{Common.SipServerConfigPath}");
+        }
 
         /// <summary>
         /// SIP传输通道(公开)
@@ -90,18 +109,15 @@ namespace LibGB28181SipServer
 
                 SIPFromHeader from = new SIPFromHeader(null, fromSipUri, "AKStream");
 
-                bool isIpV6 = (sipDevice.SipChannelLayout!.ListeningIPAddress.AddressFamily ==
-                               AddressFamily.InterNetworkV6)
-                    ? true
-                    : false;
+            
                 SIPRequest req = SIPRequest.GetRequest(method, toSipUri, to,
                     from,
                     new SIPEndPoint(sipDevice.SipChannelLayout.SIPProtocol,
                         new IPEndPoint(
-                            isIpV6
-                                ? IPAddress.Parse(Common.SipServerConfig.SipIpV6Address!)
-                                : IPAddress.Parse(Common.SipServerConfig.SipIpAddress),
+                         
+                                 IPAddress.Parse(Common.SipServerConfig.SipIpAddress),
                             sipDevice.SipChannelLayout.Port)));
+                
 
                 req.Header.Allow = null;
 
@@ -134,7 +150,11 @@ namespace LibGB28181SipServer
 
                 if (commandType == CommandType.Playback && obj != null)
                 {
-                    ((RecordInfo.RecItem) obj).InviteSipRequest = req;
+                    ((RecordInfo.RecItem)obj).InviteSipRequest = req;
+                    ((RecordInfo.RecItem)obj).CallId = req.Header.CallId;
+                    ((RecordInfo.RecItem)obj).CSeq = -1;
+                    ((RecordInfo.RecItem)obj).ToTag = "";
+                    ((RecordInfo.RecItem)obj).FromTag = req.Header.From.FromTag;
                 }
                 else if (commandType == CommandType.Play)
                 {
@@ -142,7 +162,7 @@ namespace LibGB28181SipServer
                 }
 
                 sipChannel.LastSipRequest = req;
-                Logger.Debug($"[{Common.LoggerHead}]->发送Sip请求->{req}");
+                GCommon.Logger.Debug($"[{Common.LoggerHead}]->发送Sip请求->{req}");
                 await _sipTransport.SendRequestAsync(sipDevice.RemoteEndPoint, req);
             }
             catch (Exception ex)
@@ -190,18 +210,15 @@ namespace LibGB28181SipServer
                 var fromSipUri = new SIPURI(SIPSchemesEnum.sip, sipServerIpAddress, Common.SipServerConfig.SipPort);
                 fromSipUri.User = Common.SipServerConfig.ServerSipDeviceId;
                 SIPFromHeader from = new SIPFromHeader(null, fromSipUri, "AKStream");
-                bool isIpV6 = (sipDevice.SipChannelLayout!.ListeningIPAddress.AddressFamily ==
-                               AddressFamily.InterNetworkV6)
-                    ? true
-                    : false;
+              
                 SIPRequest req = SIPRequest.GetRequest(method, toSipUri, to,
                     from,
                     new SIPEndPoint(sipDevice.SipChannelLayout.SIPProtocol,
                         new IPEndPoint(
-                            isIpV6
-                                ? IPAddress.Parse(Common.SipServerConfig.SipIpV6Address!)
-                                : IPAddress.Parse(Common.SipServerConfig.SipIpAddress),
+                         
+                            IPAddress.Parse(Common.SipServerConfig.SipIpAddress),
                             sipDevice.SipChannelLayout.Port)));
+
                 req.Header.Allow = null;
                 req.Header.Contact = new List<SIPContactHeader>()
                 {
@@ -231,7 +248,8 @@ namespace LibGB28181SipServer
                 }
 
                 sipDevice.LastSipRequest = req;
-                Logger.Debug($"[{Common.LoggerHead}]->发送Sip请求->{req}");
+                GCommon.Logger.Debug($"[{Common.LoggerHead}]->发送Sip请求->{req}");
+             
                 await _sipTransport.SendRequestAsync(sipDevice.RemoteEndPoint, req);
             }
             catch (Exception ex)
@@ -247,6 +265,97 @@ namespace LibGB28181SipServer
             }
         }
 
+
+        private async Task SendRequestForRecordSeekPosition(SipDevice sipDevice, SipChannel sipChannel,
+            SIPMethodsEnum method,
+            string contentType,
+            string xmlBody, string subject, CommandType commandType, bool needResponse, AutoResetEvent evnt,
+            AutoResetEvent evnt2, object obj,
+            int timeout)
+        {
+            try
+            {
+                IPAddress sipDeviceIpAddr = sipDevice.RemoteEndPoint.Address;
+                int sipDevicePort = sipDevice.RemoteEndPoint.Port;
+                SIPProtocolsEnum protocols = sipDevice.RemoteEndPoint.Protocol;
+                var toSipUri = new SIPURI(SIPSchemesEnum.sip,
+                    new SIPEndPoint(protocols, new IPEndPoint(sipDeviceIpAddr, sipDevicePort)));
+                toSipUri.User = sipChannel.DeviceId;
+                SIPToHeader to = new SIPToHeader(null, toSipUri, null);
+                IPAddress sipServerIpAddress = IPAddress.Parse(Common.SipServerConfig.SipIpAddress);
+                var fromSipUri = new SIPURI(SIPSchemesEnum.sip, sipServerIpAddress, Common.SipServerConfig.SipPort);
+                fromSipUri.User = Common.SipServerConfig.ServerSipDeviceId;
+
+                SIPFromHeader from = new SIPFromHeader(null, fromSipUri, "AKStream");
+
+            
+                SIPRequest req = SIPRequest.GetRequest(method, toSipUri, to,
+                    from,
+                    new SIPEndPoint(sipDevice.SipChannelLayout.SIPProtocol,
+                        new IPEndPoint(
+                         
+                            IPAddress.Parse(Common.SipServerConfig.SipIpAddress),
+                            sipDevice.SipChannelLayout.Port)));
+
+
+                req.Header.Allow = null;
+
+                req.Header.Contact = new List<SIPContactHeader>()
+                {
+                    new SIPContactHeader(null, fromSipUri)
+                };
+                req.Header.UserAgent = ConstString.SIP_USERAGENT_STRING;
+                req.Header.ContentType = contentType;
+                req.Header.Subject = string.IsNullOrEmpty(subject) ? null : subject;
+                req.Header.CallId = ((RecordInfo.RecItem)obj).CallId;
+                req.Header.CSeq = ((RecordInfo.RecItem)obj).CSeq;
+                req.Body = xmlBody;
+                if (needResponse)
+                {
+                    var nrt = new NeedReturnTask(Common.NeedResponseRequests)
+                    {
+                        AutoResetEvent = evnt,
+                        CallId = req.Header.CallId,
+                        SipRequest = req,
+                        Timeout = timeout,
+                        SipDevice = sipDevice,
+                        SipChannel = sipChannel,
+                        AutoResetEvent2 = evnt2 == null ? null : evnt2,
+                        CommandType = commandType,
+                        Obj = obj == null ? null : obj, //额外的通用类
+                    };
+                    Common.NeedResponseRequests.TryAdd(req.Header.CallId, nrt);
+                }
+
+                if (commandType == CommandType.Playback && obj != null)
+                {
+                    ((RecordInfo.RecItem)obj).InviteSipRequest = req;
+                    ((RecordInfo.RecItem)obj).CallId = ((RecordInfo.RecItem)obj).CallId;
+                    ((RecordInfo.RecItem)obj).CSeq = ((RecordInfo.RecItem)obj).CSeq;
+                    ((RecordInfo.RecItem)obj).ToTag = ((RecordInfo.RecItem)obj).ToTag;
+                    ((RecordInfo.RecItem)obj).FromTag = ((RecordInfo.RecItem)obj).FromTag;
+                }
+                else if (commandType == CommandType.Play)
+                {
+                    sipChannel.InviteSipRequest = req;
+                }
+
+                sipChannel.LastSipRequest = req;
+                GCommon.Logger.Debug($"[{Common.LoggerHead}]->发送Sip请求->{req}");
+                await _sipTransport.SendRequestAsync(sipDevice.RemoteEndPoint, req);
+            }
+            catch (Exception ex)
+            {
+                ResponseStruct rs = new ResponseStruct()
+                {
+                    Code = ErrorNumber.Sip_SendMessageExcept,
+                    Message = ErrorMessage.ErrorDic![ErrorNumber.Sip_SendMessageExcept],
+                    ExceptMessage = ex.Message,
+                    ExceptStackTrace = ex.StackTrace,
+                };
+                throw new AkStreamException(rs);
+            }
+        }
 
         /// <summary>
         /// 检测请求实时视频流参数是否正确
@@ -569,19 +678,19 @@ namespace LibGB28181SipServer
                 case PTZCommandType.SetPreset: //设置预置位
                     cmdList.Add(0x81);
                     cmdList.Add(00);
-                    cmdList.Add(dwSpeed);
+                    cmdList.Add(dwSpeed); //当id使用
                     cmdList.Add(00);
                     break;
                 case PTZCommandType.GetPreset: //调用预置位
                     cmdList.Add(0x82);
                     cmdList.Add(00);
-                    cmdList.Add(dwSpeed);
-                    cmdList.Add(00);
+                    cmdList.Add(dwSpeed); //当id使用
+                    cmdList.Add(0x80); //默认速度128
                     break;
                 case PTZCommandType.RemovePreset: //删除预置位
                     cmdList.Add(0x83);
                     cmdList.Add(00);
-                    cmdList.Add(dwSpeed);
+                    cmdList.Add(dwSpeed); //当id使用
                     cmdList.Add(00);
                     break;
                 default:
@@ -622,7 +731,22 @@ namespace LibGB28181SipServer
                     Code = ErrorNumber.Sip_DeviceNotExists,
                     Message = ErrorMessage.ErrorDic![ErrorNumber.Sip_DeviceNotExists],
                 };
-                evnt.Set();
+                try
+                {
+                    evnt.Set();
+                }
+                catch (Exception ex)
+                {
+                    ResponseStruct exrs = new ResponseStruct()
+                    {
+                        Code = ErrorNumber.Sys_AutoResetEventExcept,
+                        Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_AutoResetEventExcept],
+                        ExceptMessage = ex.Message,
+                        ExceptStackTrace = ex.StackTrace
+                    };
+                    GCommon.Logger.Warn($"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
+                }
+
                 return;
             }
 
@@ -685,7 +809,21 @@ namespace LibGB28181SipServer
             catch (AkStreamException ex)
             {
                 rs = ex.ResponseStruct;
-                evnt.Set();
+                try
+                {
+                    evnt.Set();
+                }
+                catch (Exception exex)
+                {
+                    ResponseStruct exrs = new ResponseStruct()
+                    {
+                        Code = ErrorNumber.Sys_AutoResetEventExcept,
+                        Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_AutoResetEventExcept],
+                        ExceptMessage = exex.Message,
+                        ExceptStackTrace = exex.StackTrace
+                    };
+                    GCommon.Logger.Warn($"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
+                }
             }
         }
 
@@ -731,7 +869,21 @@ namespace LibGB28181SipServer
                 catch (AkStreamException ex)
                 {
                     rs = ex.ResponseStruct;
-                    evnt.Set();
+                    try
+                    {
+                        evnt.Set();
+                    }
+                    catch (Exception exex)
+                    {
+                        ResponseStruct exrs = new ResponseStruct()
+                        {
+                            Code = ErrorNumber.Sys_AutoResetEventExcept,
+                            Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_AutoResetEventExcept],
+                            ExceptMessage = exex.Message,
+                            ExceptStackTrace = exex.StackTrace
+                        };
+                        GCommon.Logger.Warn($"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
+                    }
                 }
             }
             else
@@ -741,7 +893,21 @@ namespace LibGB28181SipServer
                     Code = ErrorNumber.Sip_DeviceNotExists,
                     Message = ErrorMessage.ErrorDic![ErrorNumber.Sip_DeviceNotExists],
                 };
-                evnt.Set();
+                try
+                {
+                    evnt.Set();
+                }
+                catch (Exception ex)
+                {
+                    ResponseStruct exrs = new ResponseStruct()
+                    {
+                        Code = ErrorNumber.Sys_AutoResetEventExcept,
+                        Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_AutoResetEventExcept],
+                        ExceptMessage = ex.Message,
+                        ExceptStackTrace = ex.StackTrace
+                    };
+                    GCommon.Logger.Warn($"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
+                }
             }
         }
 
@@ -764,8 +930,23 @@ namespace LibGB28181SipServer
             CheckInviteParam(sipChannel, PushStatus.IGNORE, out rs); //检测各参数是否正常
             if (!rs.Code.Equals(ErrorNumber.None))
             {
-                evnt.Set();
-                evnt2.Set();
+                try
+                {
+                    evnt.Set();
+                    evnt2.Set();
+                }
+                catch (Exception ex)
+                {
+                    ResponseStruct exrs = new ResponseStruct()
+                    {
+                        Code = ErrorNumber.Sys_AutoResetEventExcept,
+                        Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_AutoResetEventExcept],
+                        ExceptMessage = ex.Message,
+                        ExceptStackTrace = ex.StackTrace
+                    };
+                    GCommon.Logger.Warn($"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
+                }
+
                 return;
             }
 
@@ -774,7 +955,7 @@ namespace LibGB28181SipServer
             var body = new RecordQuery()
             {
                 DeviceID = sipChannel.DeviceId,
-                SN = new Random().Next(1, 3000),
+                SN = (int)sipQueryRecordFile.TaskId, //跟进去一个sn
                 CmdType = CommandType.RecordInfo,
                 Secrecy = 0,
                 StartTime = sipQueryRecordFile.StartTime.ToString("yyyy-MM-ddTHH:mm:ss"),
@@ -794,14 +975,28 @@ namespace LibGB28181SipServer
                         SendRequestViaSipChannel;
                 request(tmpSipDevice, sipChannel, method, ConstString.Application_SDP, xmlBody, subject, body.CmdType,
                     true,
-                    evnt, evnt2, null,
+                    evnt, evnt2, sipQueryRecordFile,
                     timeout);
             }
             catch (AkStreamException ex)
             {
                 rs = ex.ResponseStruct;
-                evnt.Set();
-                evnt2.Set();
+                try
+                {
+                    evnt.Set();
+                    evnt2.Set();
+                }
+                catch (Exception exex)
+                {
+                    ResponseStruct exrs = new ResponseStruct()
+                    {
+                        Code = ErrorNumber.Sys_AutoResetEventExcept,
+                        Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_AutoResetEventExcept],
+                        ExceptMessage = exex.Message,
+                        ExceptStackTrace = exex.StackTrace
+                    };
+                    GCommon.Logger.Warn($"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
+                }
             }
         }
 
@@ -847,7 +1042,21 @@ namespace LibGB28181SipServer
                 catch (AkStreamException ex)
                 {
                     rs = ex.ResponseStruct;
-                    evnt.Set();
+                    try
+                    {
+                        evnt.Set();
+                    }
+                    catch (Exception exex)
+                    {
+                        ResponseStruct exrs = new ResponseStruct()
+                        {
+                            Code = ErrorNumber.Sys_AutoResetEventExcept,
+                            Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_AutoResetEventExcept],
+                            ExceptMessage = exex.Message,
+                            ExceptStackTrace = exex.StackTrace
+                        };
+                        GCommon.Logger.Warn($"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
+                    }
                 }
             }
             else
@@ -857,7 +1066,21 @@ namespace LibGB28181SipServer
                     Code = ErrorNumber.Sip_DeviceNotExists,
                     Message = ErrorMessage.ErrorDic![ErrorNumber.Sip_DeviceNotExists],
                 };
-                evnt.Set();
+                try
+                {
+                    evnt.Set();
+                }
+                catch (Exception ex)
+                {
+                    ResponseStruct exrs = new ResponseStruct()
+                    {
+                        Code = ErrorNumber.Sys_AutoResetEventExcept,
+                        Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_AutoResetEventExcept],
+                        ExceptMessage = ex.Message,
+                        ExceptStackTrace = ex.StackTrace
+                    };
+                    GCommon.Logger.Warn($"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
+                }
             }
         }
 
@@ -889,7 +1112,7 @@ namespace LibGB28181SipServer
                 return;
             }
 
-            if (!record.SipChannel.SipChannelStatus.Equals(DevStatus.OK) ||
+            if (!record.SipChannel.SipChannelStatus.Equals(DevStatus.OK) &&
                 !record.SipChannel.SipChannelStatus.Equals(DevStatus.ON))
             {
                 rs = new ResponseStruct()
@@ -932,6 +1155,101 @@ namespace LibGB28181SipServer
             };
         }
 
+
+        private string CreateRecordSeekPositionSdp(RecordInfo.RecItem record, long time)
+        {
+            string recordSdp =
+                "PLAY MANSRTSP/1.0\r\n" +
+                "CSeq: " + record.CSeq + "\r\n" +
+                "Range: npt=" + time + "-\r\n";
+            return recordSdp;
+        }
+
+        /// <summary>
+        /// 回放视频时的seek position操作
+        /// </summary>
+        /// <param name="record"></param>
+        /// <param name="pushMediaInfo"></param>
+        /// <param name="time"></param>
+        /// <param name="evnt"></param>
+        /// <param name="rs"></param>
+        /// <param name="timeout"></param>
+        public void InviteRecordPosition(RecordInfo.RecItem record, PushMediaInfo pushMediaInfo, long time,
+            AutoResetEvent evnt,
+            out ResponseStruct rs, int timeout = 5000)
+        {
+            try
+            {
+                rs = new ResponseStruct()
+                {
+                    Code = ErrorNumber.None,
+                    Message = ErrorMessage.ErrorDic![ErrorNumber.None],
+                };
+
+
+                string recordSdp = CreateRecordSeekPositionSdp(record, time);
+
+                if (!string.IsNullOrEmpty(recordSdp))
+                {
+                    SIPMethodsEnum method = SIPMethodsEnum.INFO;
+                    var subject = record.InviteSipRequest.Header.Subject;
+                    try
+                    {
+                        Func<SipDevice, SipChannel, SIPMethodsEnum, string, string, string, CommandType, bool,
+                            AutoResetEvent, AutoResetEvent, object, int, Task> request =
+                            SendRequestForRecordSeekPosition;
+
+                        request(record.SipDevice, record.SipChannel, method, ConstString.Application_SDP, recordSdp,
+                            subject, CommandType.Playback, false, evnt, null, record, timeout);
+                    }
+                    catch (AkStreamException ex)
+                    {
+                        rs = ex.ResponseStruct;
+                        try
+                        {
+                            evnt.Set();
+                        }
+                        catch (Exception exex)
+                        {
+                            ResponseStruct exrs = new ResponseStruct()
+                            {
+                                Code = ErrorNumber.Sys_AutoResetEventExcept,
+                                Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_AutoResetEventExcept],
+                                ExceptMessage = exex.Message,
+                                ExceptStackTrace = exex.StackTrace
+                            };
+                            GCommon.Logger.Warn($"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                rs = new ResponseStruct()
+                {
+                    Code = ErrorNumber.Sip_InviteExcept,
+                    Message = ErrorMessage.ErrorDic![ErrorNumber.Sip_InviteExcept],
+                    ExceptMessage = ex.Message,
+                    ExceptStackTrace = ex.StackTrace,
+                };
+                try
+                {
+                    evnt.Set();
+                }
+                catch (Exception exex)
+                {
+                    ResponseStruct exrs = new ResponseStruct()
+                    {
+                        Code = ErrorNumber.Sys_AutoResetEventExcept,
+                        Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_AutoResetEventExcept],
+                        ExceptMessage = exex.Message,
+                        ExceptStackTrace = exex.StackTrace
+                    };
+                    GCommon.Logger.Warn($"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
+                }
+            }
+        }
+
         public void InviteRecord(RecordInfo.RecItem record, PushMediaInfo pushMediaInfo, AutoResetEvent evnt,
             out ResponseStruct rs, int timeout = 5000)
         {
@@ -940,7 +1258,22 @@ namespace LibGB28181SipServer
                 CheckInviteParam(record, PushStatus.PUSHON, out rs);
                 if (!rs.Code.Equals(ErrorNumber.None))
                 {
-                    evnt.Set();
+                    try
+                    {
+                        evnt.Set();
+                    }
+                    catch (Exception ex)
+                    {
+                        ResponseStruct exrs = new ResponseStruct()
+                        {
+                            Code = ErrorNumber.Sys_AutoResetEventExcept,
+                            Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_AutoResetEventExcept],
+                            ExceptMessage = ex.Message,
+                            ExceptStackTrace = ex.StackTrace
+                        };
+                        GCommon.Logger.Warn($"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
+                    }
+
                     return;
                 }
 
@@ -964,7 +1297,21 @@ namespace LibGB28181SipServer
                     catch (AkStreamException ex)
                     {
                         rs = ex.ResponseStruct;
-                        evnt.Set();
+                        try
+                        {
+                            evnt.Set();
+                        }
+                        catch (Exception exex)
+                        {
+                            ResponseStruct exrs = new ResponseStruct()
+                            {
+                                Code = ErrorNumber.Sys_AutoResetEventExcept,
+                                Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_AutoResetEventExcept],
+                                ExceptMessage = exex.Message,
+                                ExceptStackTrace = exex.StackTrace
+                            };
+                            GCommon.Logger.Warn($"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
+                        }
                     }
                 }
             }
@@ -977,7 +1324,21 @@ namespace LibGB28181SipServer
                     ExceptMessage = ex.Message,
                     ExceptStackTrace = ex.StackTrace,
                 };
-                evnt.Set();
+                try
+                {
+                    evnt.Set();
+                }
+                catch (Exception exex)
+                {
+                    ResponseStruct exrs = new ResponseStruct()
+                    {
+                        Code = ErrorNumber.Sys_AutoResetEventExcept,
+                        Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_AutoResetEventExcept],
+                        ExceptMessage = exex.Message,
+                        ExceptStackTrace = exex.StackTrace
+                    };
+                    GCommon.Logger.Warn($"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
+                }
             }
         }
 
@@ -998,7 +1359,22 @@ namespace LibGB28181SipServer
                 CheckInviteParam(sipChannel, PushStatus.PUSHON, out rs); //检测各参数是否正常
                 if (!rs.Code.Equals(ErrorNumber.None))
                 {
-                    evnt.Set();
+                    try
+                    {
+                        evnt.Set();
+                    }
+                    catch (Exception ex)
+                    {
+                        ResponseStruct exrs = new ResponseStruct()
+                        {
+                            Code = ErrorNumber.Sys_AutoResetEventExcept,
+                            Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_AutoResetEventExcept],
+                            ExceptMessage = ex.Message,
+                            ExceptStackTrace = ex.StackTrace
+                        };
+                        GCommon.Logger.Warn($"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
+                    }
+
                     return;
                 }
 
@@ -1023,7 +1399,21 @@ namespace LibGB28181SipServer
                     catch (AkStreamException ex)
                     {
                         rs = ex.ResponseStruct;
-                        evnt.Set();
+                        try
+                        {
+                            evnt.Set();
+                        }
+                        catch (Exception exex)
+                        {
+                            ResponseStruct exrs = new ResponseStruct()
+                            {
+                                Code = ErrorNumber.Sys_AutoResetEventExcept,
+                                Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_AutoResetEventExcept],
+                                ExceptMessage = exex.Message,
+                                ExceptStackTrace = exex.StackTrace
+                            };
+                            GCommon.Logger.Warn($"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
+                        }
                     }
                 }
             }
@@ -1036,7 +1426,21 @@ namespace LibGB28181SipServer
                     ExceptMessage = ex.Message,
                     ExceptStackTrace = ex.StackTrace,
                 };
-                evnt.Set();
+                try
+                {
+                    evnt.Set();
+                }
+                catch (Exception exex)
+                {
+                    ResponseStruct exrs = new ResponseStruct()
+                    {
+                        Code = ErrorNumber.Sys_AutoResetEventExcept,
+                        Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_AutoResetEventExcept],
+                        ExceptMessage = exex.Message,
+                        ExceptStackTrace = exex.StackTrace
+                    };
+                    GCommon.Logger.Warn($"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
+                }
             }
         }
 
@@ -1047,10 +1451,25 @@ namespace LibGB28181SipServer
             try
             {
                 //请求终止实时视频流时，callid,from.tag,to.tag都要与invite时一致
-                CheckInviteParam(record, PushStatus.IDLE, out rs);
+                CheckInviteParam(record, PushStatus.IGNORE, out rs);
                 if (!rs.Code.Equals(ErrorNumber.None))
                 {
-                    evnt.Set();
+                    try
+                    {
+                        evnt.Set();
+                    }
+                    catch (Exception ex)
+                    {
+                        ResponseStruct exrs = new ResponseStruct()
+                        {
+                            Code = ErrorNumber.Sys_AutoResetEventExcept,
+                            Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_AutoResetEventExcept],
+                            ExceptMessage = ex.Message,
+                            ExceptStackTrace = ex.StackTrace
+                        };
+                        GCommon.Logger.Warn($"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
+                    }
+
                     return;
                 }
 
@@ -1073,22 +1492,13 @@ namespace LibGB28181SipServer
 
                 SIPFromHeader from = new SIPFromHeader(null, fromSipUri, "AKStream");
                 var fromUri = tmpSipDevice.LastSipRequest.URI;
-                bool isIpV6 = (tmpSipDevice.SipChannelLayout!.ListeningIPAddress.AddressFamily ==
-                               AddressFamily.InterNetworkV6)
-                    ? true
-                    : false;
+               
                 SIPRequest req = SIPRequest.GetRequest(method, toSipUri, to,
-                    from,
-                    new SIPEndPoint(tmpSipDevice.SipChannelLayout.SIPProtocol,
-                        new IPEndPoint(
-                            isIpV6
-                                ? IPAddress.Parse(Common.SipServerConfig.SipIpV6Address!)
-                                : IPAddress.Parse(Common.SipServerConfig.SipIpAddress),
-                            tmpSipDevice.SipChannelLayout.Port)));
+                    from);
 
-                req.Header.CallId = record.InviteSipRequest.Header.CallId;
-                req.Header.From = new SIPFromHeader(null, fromSipUri, record.InviteSipRequest.Header.From.FromTag);
-                req.Header.To = new SIPToHeader(null, toSipUri, record.InviteSipResponse.Header.To.ToTag);
+                req.Header.CallId = record.CallId;
+                req.Header.From = new SIPFromHeader(null, fromSipUri, record.FromTag);
+                req.Header.To = new SIPToHeader(null, toSipUri, record.ToTag);
                 req.Header.Contact = new List<SIPContactHeader>()
                 {
                     new SIPContactHeader(null, fromSipUri),
@@ -1096,7 +1506,8 @@ namespace LibGB28181SipServer
                 req.Header.Contact[0].ContactName = null;
                 req.Header.Allow = null;
                 req.Header.UserAgent = ConstString.SIP_USERAGENT_STRING;
-                req.Header.CSeq = record.InviteSipResponse.Header.CSeq + 1;
+                record.CSeq++;
+                req.Header.CSeq = record.CSeq;
                 var nrt = new NeedReturnTask(Common.NeedResponseRequests)
                 {
                     AutoResetEvent = evnt,
@@ -1109,7 +1520,7 @@ namespace LibGB28181SipServer
                     Obj = record,
                 };
                 Common.NeedResponseRequests.TryAdd(req.Header.CallId, nrt);
-                Logger.Debug($"[{Common.LoggerHead}]->发送结束回放流请求->{req}");
+                GCommon.Logger.Debug($"[{Common.LoggerHead}]->发送结束回放流请求->{req}");
                 _sipTransport.SendRequestAsync(tmpSipDevice.RemoteEndPoint, req);
             }
             catch (Exception ex)
@@ -1121,7 +1532,21 @@ namespace LibGB28181SipServer
                     ExceptMessage = ex.Message,
                     ExceptStackTrace = ex.StackTrace,
                 };
-                evnt.Set();
+                try
+                {
+                    evnt.Set();
+                }
+                catch (Exception exex)
+                {
+                    ResponseStruct exrs = new ResponseStruct()
+                    {
+                        Code = ErrorNumber.Sys_AutoResetEventExcept,
+                        Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_AutoResetEventExcept],
+                        ExceptMessage = exex.Message,
+                        ExceptStackTrace = exex.StackTrace
+                    };
+                    GCommon.Logger.Warn($"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
+                }
             }
         }
 
@@ -1136,24 +1561,59 @@ namespace LibGB28181SipServer
             try
             {
                 //请求终止实时视频流时，callid,from.tag,to.tag都要与invite时一致
-                CheckInviteParam(sipChannel, PushStatus.IDLE, out rs);
+                CheckInviteParam(sipChannel, sipChannel.PushStatus, out rs);
                 if (!rs.Code.Equals(ErrorNumber.None))
                 {
-                    evnt.Set();
+                    try
+                    {
+                        evnt.Set();
+                    }
+                    catch (Exception ex)
+                    {
+                        ResponseStruct exrs = new ResponseStruct()
+                        {
+                            Code = ErrorNumber.Sys_AutoResetEventExcept,
+                            Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_AutoResetEventExcept],
+                            ExceptMessage = ex.Message,
+                            ExceptStackTrace = ex.StackTrace
+                        };
+                        GCommon.Logger.Warn($"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
+                    }
+
                     return;
                 }
 
-                if (sipChannel.PushStatus != PushStatus.PUSHON)
+                if (sipChannel.PushStatus != PushStatus.PUSHON && sipChannel.PushStatus != PushStatus.IGNORE)
                 {
                     rs = new ResponseStruct()
                     {
                         Code = ErrorNumber.Sip_NotOnPushStream,
                         Message = ErrorMessage.ErrorDic![ErrorNumber.Sip_NotOnPushStream],
                     };
+                    try
+                    {
+                        evnt.Set();
+                    }
+                    catch (Exception ex)
+                    {
+                        ResponseStruct exrs = new ResponseStruct()
+                        {
+                            Code = ErrorNumber.Sys_AutoResetEventExcept,
+                            Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_AutoResetEventExcept],
+                            ExceptMessage = ex.Message,
+                            ExceptStackTrace = ex.StackTrace
+                        };
+                        GCommon.Logger.Warn($"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
+                    }
+
                     return;
                 }
 
+
                 var tmpSipDevice = Common.SipDevices.FindLast(x => x.DeviceId.Equals(sipChannel.ParentId));
+
+                SIPRequest req = null;
+
                 SIPMethodsEnum method = SIPMethodsEnum.BYE;
                 IPAddress sipDeviceIpAddr = tmpSipDevice.RemoteEndPoint.Address;
                 int sipDevicePort = tmpSipDevice.RemoteEndPoint.Port;
@@ -1169,20 +1629,12 @@ namespace LibGB28181SipServer
                 fromSipUri.User = Common.SipServerConfig.ServerSipDeviceId;
                 SIPFromHeader from = new SIPFromHeader(null, fromSipUri, "AKStream");
                 var fromUri = tmpSipDevice.LastSipRequest.URI;
-                bool isIpV6 = (tmpSipDevice.SipChannelLayout!.ListeningIPAddress.AddressFamily ==
-                               AddressFamily.InterNetworkV6)
-                    ? true
-                    : false;
-                SIPRequest req = SIPRequest.GetRequest(method, toSipUri, to,
-                    from,
-                    new SIPEndPoint(tmpSipDevice.SipChannelLayout.SIPProtocol,
-                        new IPEndPoint(
-                            isIpV6
-                                ? IPAddress.Parse(Common.SipServerConfig.SipIpV6Address!)
-                                : IPAddress.Parse(Common.SipServerConfig.SipIpAddress),
-                            tmpSipDevice.SipChannelLayout.Port)));
+             
+                req = SIPRequest.GetRequest(method, toSipUri, to,
+                    from);
                 req.Header.CallId = sipChannel.InviteSipRequest.Header.CallId;
-                req.Header.From = new SIPFromHeader(null, fromSipUri, sipChannel.InviteSipRequest.Header.From.FromTag);
+                req.Header.From =
+                    new SIPFromHeader(null, fromSipUri, sipChannel.InviteSipRequest.Header.From.FromTag);
                 req.Header.To = new SIPToHeader(null, toSipUri, sipChannel.InviteSipResponse.Header.To.ToTag);
                 req.Header.Contact = new List<SIPContactHeader>()
                 {
@@ -1191,7 +1643,9 @@ namespace LibGB28181SipServer
                 req.Header.Contact[0].ContactName = null;
                 req.Header.Allow = null;
                 req.Header.UserAgent = ConstString.SIP_USERAGENT_STRING;
-                req.Header.CSeq = sipChannel.InviteSipResponse.Header.CSeq + 1;
+                sipChannel.InviteSipResponse.Header.CSeq++;
+                req.Header.CSeq = sipChannel.InviteSipResponse.Header.CSeq;
+
 
                 var nrt = new NeedReturnTask(Common.NeedResponseRequests)
                 {
@@ -1203,8 +1657,9 @@ namespace LibGB28181SipServer
                     SipChannel = sipChannel,
                     CommandType = CommandType.Unknown,
                 };
+
                 Common.NeedResponseRequests.TryAdd(req.Header.CallId, nrt);
-                Logger.Debug($"[{Common.LoggerHead}]->发送终止时实流请求->{req}");
+                GCommon.Logger.Debug($"[{Common.LoggerHead}]->发送终止时实流请求->{req}");
                 _sipTransport.SendRequestAsync(tmpSipDevice.RemoteEndPoint, req);
             }
             catch (Exception ex)
@@ -1216,7 +1671,21 @@ namespace LibGB28181SipServer
                     ExceptMessage = ex.Message,
                     ExceptStackTrace = ex.StackTrace,
                 };
-                evnt.Set();
+                try
+                {
+                    evnt.Set();
+                }
+                catch (Exception exex)
+                {
+                    ResponseStruct exrs = new ResponseStruct()
+                    {
+                        Code = ErrorNumber.Sys_AutoResetEventExcept,
+                        Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_AutoResetEventExcept],
+                        ExceptMessage = exex.Message,
+                        ExceptStackTrace = exex.StackTrace
+                    };
+                    GCommon.Logger.Warn($"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
+                }
             }
         }
 
@@ -1260,8 +1729,22 @@ namespace LibGB28181SipServer
                 catch (AkStreamException ex)
                 {
                     rs = ex.ResponseStruct;
-                    evnt.Set();
-                    evnt2.Set();
+                    try
+                    {
+                        evnt.Set();
+                        evnt2.Set();
+                    }
+                    catch (Exception exex)
+                    {
+                        ResponseStruct exrs = new ResponseStruct()
+                        {
+                            Code = ErrorNumber.Sys_AutoResetEventExcept,
+                            Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_AutoResetEventExcept],
+                            ExceptMessage = exex.Message,
+                            ExceptStackTrace = exex.StackTrace
+                        };
+                        GCommon.Logger.Warn($"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
+                    }
                 }
             }
             else
@@ -1271,11 +1754,30 @@ namespace LibGB28181SipServer
                     Code = ErrorNumber.Sip_DeviceNotExists,
                     Message = ErrorMessage.ErrorDic![ErrorNumber.Sip_DeviceNotExists],
                 };
-                evnt.Set();
-                evnt2.Set();
+                try
+                {
+                    evnt.Set();
+                    evnt2.Set();
+                }
+                catch (Exception ex)
+                {
+                    ResponseStruct exrs = new ResponseStruct()
+                    {
+                        Code = ErrorNumber.Sys_AutoResetEventExcept,
+                        Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_AutoResetEventExcept],
+                        ExceptMessage = ex.Message,
+                        ExceptStackTrace = ex.StackTrace
+                    };
+                    GCommon.Logger.Warn($"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
+                }
             }
         }
 
+
+        public void KickSipDevice(SipDevice sipDevice)
+        {
+            SipMsgProcess.DoKickSipDevice(sipDevice);
+        }
 
         /// <summary>
         /// 停止Sip服务
@@ -1321,29 +1823,29 @@ namespace LibGB28181SipServer
         /// <returns></returns>
         public void Start(out ResponseStruct rs)
         {
-            Logger.Info($"[{Common.LoggerHead}]->配置情况->Sip服务ID->{Common.SipServerConfig.ServerSipDeviceId}");
-            Logger.Info($"[{Common.LoggerHead}]->配置情况->本机IP地址->{Common.SipServerConfig.SipIpAddress}");
+            GCommon.Logger.Info($"[{Common.LoggerHead}]->配置情况->Sip服务ID->{Common.SipServerConfig.ServerSipDeviceId}");
+            GCommon.Logger.Info($"[{Common.LoggerHead}]->配置情况->本机IP地址->{Common.SipServerConfig.SipIpAddress}");
             if (Common.SipServerConfig.IpV6Enable)
             {
-                Logger.Info(
+                GCommon.Logger.Info(
                     $"[{Common.LoggerHead}]->配置情况->本机IPV6地址->{Common.SipServerConfig.SipIpV6Address}");
             }
 
-            Logger.Info($"[{Common.LoggerHead}]->配置情况->启用IPV6->{Common.SipServerConfig.IpV6Enable}");
-            Logger.Info($"[{Common.LoggerHead}]->配置情况->Sip服务端口->{Common.SipServerConfig.SipPort}");
-            Logger.Info($"[{Common.LoggerHead}]->配置情况->Sip服务协议->{Common.SipServerConfig.MsgProtocol}");
-            Logger.Info($"[{Common.LoggerHead}]->配置情况->GB28181协议版本->{Common.SipServerConfig.GbVersion}");
-            Logger.Info($"[{Common.LoggerHead}]->配置情况->Sip服务是否启用鉴权->{Common.SipServerConfig.Authentication}");
-            Logger.Info($"[{Common.LoggerHead}]->配置情况->Sip服务鉴权用户名->{Common.SipServerConfig.SipUsername}");
-            Logger.Info($"[{Common.LoggerHead}]->配置情况->Sip服务鉴权密码->{Common.SipServerConfig.SipPassword}");
-            Logger.Info($"[{Common.LoggerHead}]->配置情况->Sip服务域ID->{Common.SipServerConfig.Realm}");
-            Logger.Info(
+            GCommon.Logger.Info($"[{Common.LoggerHead}]->配置情况->启用IPV6->{Common.SipServerConfig.IpV6Enable}");
+            GCommon.Logger.Info($"[{Common.LoggerHead}]->配置情况->Sip服务端口->{Common.SipServerConfig.SipPort}");
+            GCommon.Logger.Info($"[{Common.LoggerHead}]->配置情况->Sip服务协议->{Common.SipServerConfig.MsgProtocol}");
+            GCommon.Logger.Info($"[{Common.LoggerHead}]->配置情况->GB28181协议版本->{Common.SipServerConfig.GbVersion}");
+            GCommon.Logger.Info($"[{Common.LoggerHead}]->配置情况->Sip服务是否启用鉴权->{Common.SipServerConfig.Authentication}");
+            GCommon.Logger.Info($"[{Common.LoggerHead}]->配置情况->Sip服务鉴权用户名->{Common.SipServerConfig.SipUsername}");
+            GCommon.Logger.Info($"[{Common.LoggerHead}]->配置情况->Sip服务鉴权密码->{Common.SipServerConfig.SipPassword}");
+            GCommon.Logger.Info($"[{Common.LoggerHead}]->配置情况->Sip服务域ID->{Common.SipServerConfig.Realm}");
+            GCommon.Logger.Info(
                 $"[{Common.LoggerHead}]->配置情况->Sip服务心跳周期（秒）->{Common.SipServerConfig.KeepAliveInterval}");
-            Logger.Info(
+            GCommon.Logger.Info(
                 $"[{Common.LoggerHead}]->配置情况->Sip服务允许心跳丢失次数->{Common.SipServerConfig.KeepAliveLostNumber}");
             try
             {
-                Logger.Info($"[{Common.LoggerHead}]->启动Sip服务.");
+                GCommon.Logger.Info($"[{Common.LoggerHead}]->启动Sip服务.");
 
                 //创建sip传输层
                 _sipTransport = new SIPTransport();
@@ -1357,13 +1859,13 @@ namespace LibGB28181SipServer
                     _sipTcpIpV4Channel = new SIPTCPChannel(new IPEndPoint(IPAddress.Any,
                         Common.SipServerConfig.SipPort));
                     _sipTransport.AddSIPChannel(_sipTcpIpV4Channel);
-                    Logger.Info(
+                    GCommon.Logger.Info(
                         $"[{Common.LoggerHead}]->监听端口成功,监听情况->{_sipTcpIpV4Channel.ListeningEndPoint.Address}:{_sipTcpIpV4Channel.ListeningEndPoint.Port}(TCP via IPV4)");
                 }
 
                 _sipTransport.AddSIPChannel(_sipUdpIpV4Channel);
 
-                Logger.Info(
+                GCommon.Logger.Info(
                     $"[{Common.LoggerHead}]->监听端口成功,监听情况->{_sipUdpIpV4Channel.ListeningEndPoint.Address}:{_sipUdpIpV4Channel.ListeningEndPoint.Port}(UDP via IPV4)");
 
                 // 创建ipv6 udp传输层
@@ -1377,12 +1879,12 @@ namespace LibGB28181SipServer
                         _sipTcpIpV6Channel = new SIPTCPChannel(new IPEndPoint(IPAddress.IPv6Any,
                             Common.SipServerConfig.SipPort));
                         _sipTransport.AddSIPChannel(_sipTcpIpV6Channel);
-                        Logger.Info(
+                        GCommon.Logger.Info(
                             $"[{Common.LoggerHead}]->监听端口成功,监听情况->{_sipTcpIpV6Channel.ListeningEndPoint.Address}:{_sipTcpIpV6Channel.ListeningEndPoint.Port}(TCP via IPV6)");
                     }
 
                     _sipTransport.AddSIPChannel(_sipUdpIpV6Channel);
-                    Logger.Info(
+                    GCommon.Logger.Info(
                         $"[{Common.LoggerHead}]->监听端口成功,监听情况->{_sipUdpIpV6Channel.ListeningEndPoint.Address}:{_sipUdpIpV6Channel.ListeningEndPoint.Port}(UDP via IPV6)");
                 }
 
@@ -1393,7 +1895,7 @@ namespace LibGB28181SipServer
                         _sipTransport.SIPTransportRequestReceived += SipMsgProcess.SipTransportRequestReceived;
                         _sipTransport.SIPTransportResponseReceived += SipMsgProcess.SipTransportResponseReceived;
                         Task.Factory.StartNew(() => { SipMsgProcess.ProcessCatalogThread(); });
-
+                        Task.Factory.StartNew(() => { SipMsgProcess.ProcessRecordInfoThread(); });
                         break;
                 }
 
@@ -1414,22 +1916,6 @@ namespace LibGB28181SipServer
                 };
                 throw new AkStreamException(rs);
             }
-        }
-
-        public SipServer()
-        {
-            ResponseStruct rs;
-            Logger.Info($"[{Common.LoggerHead}]->加载配置文件->{Common.SipServerConfigPath}");
-            var ret = Common.ReadSipServerConfig(out rs);
-
-            if (ret < 0 || !rs.Code.Equals(ErrorNumber.None))
-            {
-                Logger.Error($"[{Common.LoggerHead}]->加载配置文件失败->{Common.SipServerConfigPath}");
-                throw new AkStreamException(rs);
-            }
-
-            Common.SipServer = this;
-            Logger.Info($"[{Common.LoggerHead}]->加载配置文件成功->{Common.SipServerConfigPath}");
         }
     }
 }

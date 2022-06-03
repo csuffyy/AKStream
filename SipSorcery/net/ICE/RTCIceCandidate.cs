@@ -38,7 +38,7 @@ namespace SIPSorcery.Net
         /// </summary>
         public IceServer IceServer { get; internal set; }
 
-        public string candidate { get; set; }
+        public string candidate => ToString();
 
         public string sdpMid { get; set; }
 
@@ -89,7 +89,7 @@ namespace SIPSorcery.Net
         public ushort port { get; set; }
 
         /// <summary>
-        /// The typ of ICE candidate, host, srflx etc.
+        /// The type of ICE candidate, host, srflx etc.
         /// </summary>
         public RTCIceCandidateType type { get; set; }
 
@@ -112,8 +112,7 @@ namespace SIPSorcery.Net
         public IPEndPoint DestinationEndPoint { get; private set; }
 
         private RTCIceCandidate()
-        {
-        }
+        { }
 
         public RTCIceCandidate(RTCIceCandidateInit init)
         {
@@ -133,6 +132,19 @@ namespace SIPSorcery.Net
                 relatedAddress = iceCandidate.relatedAddress;
                 relatedPort = iceCandidate.relatedPort;
             }
+        }
+
+        /// <summary>
+        /// Convenience constructor for cases when the application wants
+        /// to create an ICE candidate,
+        /// </summary>
+        public RTCIceCandidate(
+             RTCIceProtocol cProtocol,
+            IPAddress cAddress,
+            ushort cPort,
+            RTCIceCandidateType cType)
+        {
+            SetAddressProperties(cProtocol, cAddress, cPort, cType, null, 0);
         }
 
         public void SetAddressProperties(
@@ -222,12 +234,12 @@ namespace SIPSorcery.Net
             if (type == RTCIceCandidateType.host || type == RTCIceCandidateType.prflx)
             {
                 string candidateStr = String.Format("{0} {1} udp {2} {3} {4} typ {5} generation 0",
-                    foundation,
-                    component.GetHashCode(),
-                    priority,
-                    address,
-                    port,
-                    type);
+                foundation,
+                component.GetHashCode(),
+                priority,
+                address,
+                port,
+                type);
 
                 return candidateStr;
             }
@@ -241,14 +253,14 @@ namespace SIPSorcery.Net
                 }
 
                 string candidateStr = String.Format("{0} {1} udp {2} {3} {4} typ {5} raddr {6} rport {7} generation 0",
-                    foundation,
-                    component.GetHashCode(),
-                    priority,
-                    address,
-                    port,
-                    type,
-                    relAddr,
-                    relatedPort);
+                     foundation,
+                     component.GetHashCode(),
+                     priority,
+                     address,
+                     port,
+                     type,
+                     relAddr,
+                     relatedPort);
 
                 return candidateStr;
             }
@@ -265,19 +277,17 @@ namespace SIPSorcery.Net
 
         private string GetFoundation()
         {
-            int addressVal = !String.IsNullOrEmpty(address) ? Crypto.GetSHAHash(address).Sum(x => (byte) x) : 0;
-            int svrVal = (type == RTCIceCandidateType.relay || type == RTCIceCandidateType.srflx)
-                ? Crypto.GetSHAHash(IceServer != null ? IceServer._uri.ToString() : "").Sum(x => (byte) x)
-                : 0;
+            int addressVal = !String.IsNullOrEmpty(address) ? Crypto.GetSHAHash(address).Sum(x => (byte)x) : 0;
+            int svrVal = (type == RTCIceCandidateType.relay || type == RTCIceCandidateType.srflx) ?
+                Crypto.GetSHAHash(IceServer != null ? IceServer._uri.ToString() : "").Sum(x => (byte)x) : 0;
             return (type.GetHashCode() + addressVal + svrVal + protocol.GetHashCode()).ToString();
         }
 
         private uint GetPriority()
         {
-            return (uint) ((2 ^ 24) * (126 - type.GetHashCode()) +
-                           (2 ^ 8) *
-                           (65535) + // TODO: Add some kind of priority to different local IP addresses if needed.
-                           (2 ^ 0) * (256 - component.GetHashCode()));
+            return (uint)((2 ^ 24) * (126 - type.GetHashCode()) +
+                      (2 ^ 8) * (65535) + // TODO: Add some kind of priority to different local IP addresses if needed.
+                      (2 ^ 0) * (256 - component.GetHashCode()));
         }
 
         public string toJSON()
@@ -304,7 +314,7 @@ namespace SIPSorcery.Net
         public bool IsEquivalentEndPoint(RTCIceProtocol epPotocol, IPEndPoint ep)
         {
             if (protocol == epPotocol && DestinationEndPoint != null &&
-                ep.Address.Equals(DestinationEndPoint.Address) && DestinationEndPoint.Port == ep.Port)
+               ep.Address.Equals(DestinationEndPoint.Address) && DestinationEndPoint.Port == ep.Port)
             {
                 return true;
             }

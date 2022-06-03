@@ -5,7 +5,7 @@ using Newtonsoft.Json;
 namespace LibZLMediaKitMediaServer.Structs.WebResponse.ZLMediaKit
 {
     [Serializable]
-    public class originSock
+    public class OriginSock
     {
         private string? _identifier;
         private string? _local_ip;
@@ -13,30 +13,35 @@ namespace LibZLMediaKitMediaServer.Structs.WebResponse.ZLMediaKit
         private string? _peer_ip;
         private ushort? _peer_port;
 
+        [JsonProperty("identifier")]
         public string? Identifier
         {
             get => _identifier;
             set => _identifier = value;
         }
 
+        [JsonProperty("local_ip")]
         public string? Local_Ip
         {
             get => _local_ip;
             set => _local_ip = value;
         }
 
+        [JsonProperty("local_port")]
         public ushort? Local_Port
         {
             get => _local_port;
             set => _local_port = value;
         }
 
+        [JsonProperty("peer_ip")]
         public string? Peer_Ip
         {
             get => _peer_ip;
             set => _peer_ip = value;
         }
 
+        [JsonProperty("peer_port")]
         public ushort? Peer_Port
         {
             get => _peer_port;
@@ -45,7 +50,7 @@ namespace LibZLMediaKitMediaServer.Structs.WebResponse.ZLMediaKit
     }
 
     [Serializable]
-    public enum originType
+    public enum OriginType
     {
         unknown = 0,
         rtmp_push = 1,
@@ -64,12 +69,12 @@ namespace LibZLMediaKitMediaServer.Structs.WebResponse.ZLMediaKit
         private int? _codec_id;
         private string? _codec_id_name;
         private int? _codec_type;
+        private int? _fps;
+        private int? _height;
         private string? _ready;
         private int? _sample_bit;
         private int? _sample_rate;
-        private int? _fps;
         private int? _width;
-        private int? _height;
 
 
         [JsonProperty("channels")]
@@ -144,19 +149,19 @@ namespace LibZLMediaKitMediaServer.Structs.WebResponse.ZLMediaKit
     public class MediaDataItem
     {
         private int? _aliveSecond;
+        private string? _app;
         private int? _bytesSpeed;
         private long? _createStamp;
-        private string? _app;
+        private OriginSock? _originSock;
+        private OriginType? _originType;
+        private string? _originTypeStr;
+        private string? _originUrl;
         private int? _readerCount;
         private string? _schema;
         private string? _stream;
         private int? _totalReaderCount;
-        private string? _vhost;
-        private originSock? _originSock;
-        private originType? _originType;
-        private string? _originTypeStr;
-        private string? _originUrl;
         private List<TracksItem> _tracks;
+        private string? _vhost;
 
         [JsonProperty("createStamp")]
         public long? CreateStamp
@@ -193,6 +198,7 @@ namespace LibZLMediaKitMediaServer.Structs.WebResponse.ZLMediaKit
             set => _readerCount = value;
         }
 
+        [JsonProperty("schema")]
         public string? Schema
         {
             get => _schema;
@@ -220,24 +226,28 @@ namespace LibZLMediaKitMediaServer.Structs.WebResponse.ZLMediaKit
             set => _vhost = value;
         }
 
-        public originSock? OriginSock
+        [JsonProperty("originSock")]
+        public OriginSock? OriginSock
         {
             get => _originSock;
             set => _originSock = value;
         }
 
-        public originType? OriginType
+        [JsonProperty("originType")]
+        public OriginType? OriginType
         {
             get => _originType;
             set => _originType = value;
         }
 
+        [JsonProperty("originTypeStr")]
         public string? OriginTypeStr
         {
             get => _originTypeStr;
             set => _originTypeStr = value;
         }
 
+        [JsonProperty("originUrl")]
         public string? OriginUrl
         {
             get => _originUrl;

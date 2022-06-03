@@ -6,11 +6,12 @@ namespace LibZLMediaKitMediaServer.Structs.WebRequest.ZLMediaKit
     [Serializable]
     public class ReqZLMediaKitStartRecord : ReqZLMediaKitRequestBase
     {
+        private string? _app;
+        private string? _customized_path;
+        private int? _max_second = 0;
+        private string? _stream;
         private int? _type;
         private string? _vhost;
-        private string? _app;
-        private string? _stream;
-        private string? _customized_path;
 
         [JsonIgnore]
         public int? Type
@@ -41,6 +42,15 @@ namespace LibZLMediaKitMediaServer.Structs.WebRequest.ZLMediaKit
         {
             get => _customized_path;
             set => _customized_path = value;
+        }
+
+        /// <summary>
+        /// 指定通道录制文件录制时长（秒）
+        /// </summary>
+        public int? Max_Second
+        {
+            get => _max_second;
+            set => _max_second = value;
         }
     }
 }
