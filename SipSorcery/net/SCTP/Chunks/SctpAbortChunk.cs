@@ -42,7 +42,8 @@ namespace SIPSorcery.Net
         /// the sender filled in the Verification Tag expected by the peer.</param>
         public SctpAbortChunk(bool verificationTagBit) :
             base(SctpChunkType.ABORT, verificationTagBit)
-        { }
+        {
+        }
 
         /// <summary>
         /// Gets the user supplied abort reason if available.
@@ -56,7 +57,7 @@ namespace SIPSorcery.Net
                     .First(x => x.CauseCode == SctpErrorCauseCode.UserInitiatedAbort));
                 return userAbort.AbortReason;
             }
-            else if(ErrorCauses.Any(x => x.CauseCode == SctpErrorCauseCode.ProtocolViolation))
+            else if (ErrorCauses.Any(x => x.CauseCode == SctpErrorCauseCode.ProtocolViolation))
             {
                 var protoViolation = (SctpErrorProtocolViolation)(ErrorCauses
                     .First(x => x.CauseCode == SctpErrorCauseCode.ProtocolViolation));

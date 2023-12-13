@@ -1,7 +1,6 @@
 using System;
 using System.Net;
 using LibCommon;
-using LibLogger;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
@@ -22,7 +21,7 @@ namespace AKStreamKeeper.Attributes
             string remoteIpAddr = context.HttpContext.Connection.RemoteIpAddress.ToString();
             try
             {
-                if (context.HttpContext.Response.StatusCode == (int) HttpStatusCode.OK)
+                if (context.HttpContext.Response.StatusCode == (int)HttpStatusCode.OK)
                 {
                     if (!context.HttpContext.Request.Path.Equals("/WebHook/MediaServerRegister"))
                     {

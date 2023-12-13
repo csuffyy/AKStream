@@ -6,7 +6,6 @@ using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
-using LibLogger;
 
 namespace LibCommon
 {
@@ -66,7 +65,7 @@ namespace LibCommon
             ServicePointManager.Expect100Continue = false;
 
 
-            HttpWebRequest request = (HttpWebRequest) WebRequest.Create(url);
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
             request.KeepAlive = false;
             request.ProtocolVersion = HttpVersion.Version11;
             request.Method = "DELETE";
@@ -84,7 +83,7 @@ namespace LibCommon
             HttpWebResponse myResponse = null!;
             try
             {
-                myResponse = (HttpWebResponse) request.GetResponse();
+                myResponse = (HttpWebResponse)request.GetResponse();
                 StreamReader reader = new StreamReader(myResponse.GetResponseStream(), Encoding.GetEncoding(encode));
                 string content = reader.ReadToEnd();
                 return content;
@@ -92,7 +91,7 @@ namespace LibCommon
             //异常请求  
             catch (WebException e)
             {
-                myResponse = (HttpWebResponse) e.Response;
+                myResponse = (HttpWebResponse)e.Response;
                 if (myResponse == null) return e.Message;
                 using (Stream errData = myResponse.GetResponseStream())
                 {
@@ -163,7 +162,7 @@ namespace LibCommon
             ServicePointManager.Expect100Continue = false;
 
 
-            HttpWebRequest request = (HttpWebRequest) WebRequest.Create(url);
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
             request.KeepAlive = false;
             request.ProtocolVersion = HttpVersion.Version11;
             request.Method = "GET";
@@ -181,7 +180,7 @@ namespace LibCommon
             HttpWebResponse myResponse = null!;
             try
             {
-                myResponse = (HttpWebResponse) request.GetResponse();
+                myResponse = (HttpWebResponse)request.GetResponse();
                 StreamReader reader = new StreamReader(myResponse.GetResponseStream(), Encoding.GetEncoding(encode));
                 string content = reader.ReadToEnd();
                 return content;
@@ -189,7 +188,7 @@ namespace LibCommon
             //异常请求  
             catch (WebException e)
             {
-                myResponse = (HttpWebResponse) e.Response;
+                myResponse = (HttpWebResponse)e.Response;
                 if (myResponse == null) return e.Message;
                 using (Stream errData = myResponse.GetResponseStream())
                 {
@@ -260,7 +259,7 @@ namespace LibCommon
             ServicePointManager.Expect100Continue = false;
 
 
-            HttpWebRequest request = (HttpWebRequest) WebRequest.Create(url);
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
             request.KeepAlive = false;
             request.ProtocolVersion = HttpVersion.Version11;
             request.Method = "GET";
@@ -286,7 +285,7 @@ namespace LibCommon
             //异常请求  
             catch (WebException e)
             {
-                myResponse = (HttpWebResponse) e.Response;
+                myResponse = (HttpWebResponse)e.Response;
                 if (myResponse == null) return e.Message;
                 using (Stream errData = myResponse.GetResponseStream())
                 {
@@ -367,7 +366,7 @@ namespace LibCommon
             HttpWebResponse response = null!;
             try
             {
-                request = (HttpWebRequest) WebRequest.Create(url);
+                request = (HttpWebRequest)WebRequest.Create(url);
                 request.Method = "POST";
                 //request.Accept = "*/*";
                 request.Accept =
@@ -410,7 +409,7 @@ namespace LibCommon
             }
             catch (WebException e)
             {
-                response = (HttpWebResponse) e.Response;
+                response = (HttpWebResponse)e.Response;
                 if (response == null) return e.Message;
                 using (Stream errData = response.GetResponseStream())
                 {
@@ -490,7 +489,7 @@ namespace LibCommon
             HttpWebResponse response = null!;
             try
             {
-                request = (HttpWebRequest) WebRequest.Create(url);
+                request = (HttpWebRequest)WebRequest.Create(url);
                 request.Method = "POST";
                 //request.Accept = "*/*";
                 request.Accept =
@@ -533,7 +532,7 @@ namespace LibCommon
             }
             catch (WebException e)
             {
-                response = (HttpWebResponse) e.Response;
+                response = (HttpWebResponse)e.Response;
                 if (response == null) return e.Message;
                 using (Stream errData = response.GetResponseStream())
                 {
@@ -577,8 +576,8 @@ namespace LibCommon
 
             try
             {
-                HttpWebRequest req = (HttpWebRequest) HttpWebRequest.Create(url); //打开网络连接
-                HttpWebResponse rsp = (HttpWebResponse) req.GetResponse();
+                HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(url); //打开网络连接
+                HttpWebResponse rsp = (HttpWebResponse)req.GetResponse();
 
                 if (rsp.StatusCode == HttpStatusCode.OK)
                 {
@@ -645,11 +644,10 @@ namespace LibCommon
                 }
                 catch (Exception ex)
                 {
-                   
                     throw ex;
                 }
             }
-          
+
             return false;
         }
 
@@ -699,11 +697,11 @@ namespace LibCommon
 
             try
             {
-                HttpWebRequest myRequest = (HttpWebRequest) HttpWebRequest.Create(url); // 打开网络连接
+                HttpWebRequest myRequest = (HttpWebRequest)HttpWebRequest.Create(url); // 打开网络连接
 
                 if (startPosition > 0)
                 {
-                    myRequest.AddRange((int) startPosition); // 设置Range值,与上面的writeStream.Seek用意相同,是为了定义远程文件读取位置
+                    myRequest.AddRange((int)startPosition); // 设置Range值,与上面的writeStream.Seek用意相同,是为了定义远程文件读取位置
                 }
 
                 Stream readStream = myRequest.GetResponse().GetResponseStream(); // 向服务器请求,获得服务器的回应数据流
@@ -716,7 +714,7 @@ namespace LibCommon
                 while (contentSize > 0) // 如果读取长度大于零则继续读
                 {
                     currPostion += contentSize;
-                    int percent = (int) (currPostion * 100 / remoteFileLength);
+                    int percent = (int)(currPostion * 100 / remoteFileLength);
 
 
                     writeStream.Write(btArray, 0, contentSize); // 写入本地文件

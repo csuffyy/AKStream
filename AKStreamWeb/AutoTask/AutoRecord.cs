@@ -7,7 +7,6 @@ using LibCommon;
 using LibCommon.Structs;
 using LibCommon.Structs.DBModels;
 using LibCommon.Structs.WebRequest;
-using LibLogger;
 
 namespace AKStreamWeb.AutoTask
 {
@@ -23,7 +22,7 @@ namespace AKStreamWeb.AutoTask
                 }
                 catch (Exception ex)
                 {
-                     GCommon.Logger.Error(
+                    GCommon.Logger.Error(
                         $"[{Common.LoggerHead}]->启动自动录制线程异常：{ex.Message}\r\n{ex.StackTrace}");
                 }
             })).Start();
@@ -34,9 +33,10 @@ namespace AKStreamWeb.AutoTask
         /// </summary>
         /// <param name="plan"></param>
         /// <returns></returns>
-        private List<string> getRecordFileDataList(string mainId)
+        private List<string> GetRecordFileDataList(string mainId)
         {
             List<string?> ret = null!;
+
             ret = ORMHelper.Db.Select<RecordFile>()
                 .Where(x => x.MainId.Equals(mainId))
                 .Where(x => x.Deleted == false)
@@ -57,7 +57,7 @@ namespace AKStreamWeb.AutoTask
         /// </summary>
         /// <param name="mainId"></param>
         /// <returns></returns>
-        private decimal getRecordFileSize(string mainId)
+        private decimal GetRecordFileSize(string mainId)
         {
             try
             {
@@ -78,7 +78,7 @@ namespace AKStreamWeb.AutoTask
         /// </summary>
         /// <param name="sdp"></param>
         /// <returns></returns>
-        private bool checkTimeRange(RecordPlan sdp)
+        private bool CheckTimeRange(RecordPlan sdp)
         {
             if (sdp.TimeRangeList != null && sdp.TimeRangeList.Count > 0)
             {
@@ -86,13 +86,13 @@ namespace AKStreamWeb.AutoTask
                 foreach (var sdpTimeRange in sdp.TimeRangeList)
                 {
                     if (sdpTimeRange != null && sdpTimeRange.WeekDay == DateTime.Now.DayOfWeek &&
-                        isTimeRange(sdpTimeRange))
+                        IsTimeRange(sdpTimeRange))
                     {
                         return true; //有当天计划并在时间反问内返回true
                     }
 
                     if (sdpTimeRange != null && sdpTimeRange.WeekDay == DateTime.Now.DayOfWeek &&
-                        !isTimeRange(sdpTimeRange))
+                        !IsTimeRange(sdpTimeRange))
                     {
                         haveFalse = true; //当天计划存在，但不在范围，先做个标记，因为也许会有多个星期n的情况
                     }
@@ -113,7 +113,7 @@ namespace AKStreamWeb.AutoTask
         /// </summary>
         /// <param name="d"></param>
         /// <returns></returns>
-        private bool isTimeRange(RecordPlanRange d)
+        private bool IsTimeRange(RecordPlanRange d)
         {
             TimeSpan nowDt = DateTime.Now.TimeOfDay;
             string start = d.StartTime.ToString("HH:mm:ss");
@@ -144,7 +144,7 @@ namespace AKStreamWeb.AutoTask
         /// </summary>
         /// <param name="videoSize"></param>
         /// <param name="sdp"></param>
-        private void deleteFileOneByOne(decimal videoSize, MediaServerStreamInfo mediaInfo, RecordPlan plan)
+        private void DeleteFileOneByOne(decimal videoSize, MediaServerStreamInfo mediaInfo, RecordPlan plan)
         {
             ReqGetRecordFileList req = new ReqGetRecordFileList();
             req.MainId = mediaInfo.Stream;
@@ -179,12 +179,12 @@ namespace AKStreamWeb.AutoTask
                         {
                             if (MediaServerService.DeleteRecordFile(ret.Id, out rs))
                             {
-                                deleteSize += (long) ret.FileSize!;
-                                 GCommon.Logger.Info(
+                                deleteSize += (long)ret.FileSize!;
+                                GCommon.Logger.Info(
                                     $"[{Common.LoggerHead}]->删除一个录制文件->{mediaInfo.MediaServerId}->{mediaInfo.Stream}->DBId:{ret.Id}->FilePath:{ret.VideoPath}");
                             }
 
-                            Thread.Sleep(20);
+                            Thread.Sleep(500);
                         }
 
                         if ((videoSize - deleteSize) < plan.LimitSpace)
@@ -206,6 +206,21 @@ namespace AKStreamWeb.AutoTask
         {
             foreach (var day in days)
             {
+                #region debug sql output
+
+                if (Common.IsDebug)
+                {
+                    var sql = ORMHelper.Db.Select<RecordFile>()
+                        .Where(x => x.RecordDate.Equals(day))
+                        .Where(x => x.Deleted.Equals(false))
+                        .Where(x => x.MainId.Equals(mediaInfo.Stream)).ToSql();
+
+                    GCommon.Logger.Debug(
+                        $"[{Common.LoggerHead}]->DeleteFileByDay->执行SQL:->{sql}");
+                }
+
+                #endregion
+
                 var deleteList = ORMHelper.Db.Select<RecordFile>()
                     .Where(x => x.RecordDate.Equals(day))
                     .Where(x => x.Deleted.Equals(false))
@@ -215,16 +230,31 @@ namespace AKStreamWeb.AutoTask
                 {
                     var deleteFileList = deleteList.Select(x => x.Id).ToList();
 
+                    #region debug sql output
+
+                    if (Common.IsDebug)
+                    {
+                        var sql = ORMHelper.Db.Update<RecordFile>().Set(x => x.UpdateTime, DateTime.Now)
+                            .Set(x => x.Deleted, true)
+                            .Where(x => x.RecordDate.Equals(day))
+                            .Where(x => x.MainId.Equals(mediaInfo.Stream)).ToSql();
+
+                        GCommon.Logger.Debug(
+                            $"[{Common.LoggerHead}]->DeleteFileByDay->执行SQL:->{sql}");
+                    }
+
+                    #endregion
+
                     ORMHelper.Db.Update<RecordFile>().Set(x => x.UpdateTime, DateTime.Now)
                         .Set(x => x.Deleted, true)
                         .Where(x => x.RecordDate.Equals(day))
                         .Where(x => x.MainId.Equals(mediaInfo.Stream)).ExecuteAffrows();
                     MediaServerService.DeleteRecordFileList(deleteFileList, out _);
-                     GCommon.Logger.Info(
+                    GCommon.Logger.Info(
                         $"[{Common.LoggerHead}]->删除一天录制文件->{mediaInfo.MediaServerId}->{mediaInfo.Stream}->{day}");
                 }
 
-                Thread.Sleep(100);
+                Thread.Sleep(500);
             }
         }
 
@@ -232,10 +262,26 @@ namespace AKStreamWeb.AutoTask
         {
             while (true)
             {
+                bool diskuseage = true;
                 try
                 {
                     ResponseStruct rs = null;
                     var recordPlanList = RecordPlanService.GetRecordPlanList("", out rs);
+
+                    #region debug sql output
+
+                    if (Common.IsDebug)
+                    {
+                        var sql = ORMHelper.Db.Select<VideoChannel>().Where(x => x.Enabled.Equals(true))
+                            .Where(x => !string.IsNullOrEmpty(x.RecordPlanName))
+                            .Where(x => x.AutoRecord.Equals(true)).ToSql();
+
+                        GCommon.Logger.Debug(
+                            $"[{Common.LoggerHead}]->KeepRecord->执行SQL:->{sql}");
+                    }
+
+                    #endregion
+
                     var videoChannelList = ORMHelper.Db.Select<VideoChannel>().Where(x => x.Enabled.Equals(true))
                         .Where(x => !string.IsNullOrEmpty(x.RecordPlanName))
                         .Where(x => x.AutoRecord.Equals(true)).ToList();
@@ -243,11 +289,75 @@ namespace AKStreamWeb.AutoTask
                     {
                         try
                         {
-                            var retlist = GCommon.Ldb.VideoOnlineInfo.FindAll().ToList();
+                            List<VideoChannelMediaInfo> retlist = null;
+                            lock (GCommon.Ldb.LiteDBLockObj)
+                            {
+                                retlist = GCommon.Ldb.VideoOnlineInfo.FindAll().ToList();
+                            }
+
                             foreach (var obj in retlist)
                             {
                                 if (obj != null && obj.MediaServerStreamInfo != null)
                                 {
+                                    var MediaServerTmp =
+                                        Common.MediaServerList.FindLast(x =>
+                                            x.MediaServerId.Equals(obj.MediaServerId));
+                                    if (MediaServerTmp != null)
+                                    {
+                                        if (MediaServerTmp.DisksUseable != null &&
+                                            MediaServerTmp.DisksUseable.Count > 0)
+                                        {
+                                            foreach (var disk in MediaServerTmp.DisksUseable)
+                                            {
+                                                if (disk.Value != 0)
+                                                {
+                                                    GCommon.Logger.Warn(
+                                                        $"[{Common.LoggerHead}]->{disk.Key}所在的磁盘挂载有异常，异常值为：{disk.Value},将中断{obj.MainId}的录制计划，待磁盘挂载正常后恢复录制计划");
+                                                    diskuseage = false;
+                                                    ResponseStruct rs2 = new ResponseStruct();
+
+                                                    if (obj.MediaServerStreamInfo.IsRecorded != null &&
+                                                        obj.MediaServerStreamInfo.IsRecorded == true)
+                                                    {
+                                                        try
+                                                        {
+                                                            var ret = MediaServerService.StopRecord(
+                                                                obj.MediaServerId,
+                                                                obj.MainId,
+                                                                out rs2);
+                                                            if (!ret.Result || ret.Code != 0 ||
+                                                                rs.Code != ErrorNumber.None)
+                                                            {
+                                                                GCommon.Logger.Warn(
+                                                                    $"[{Common.LoggerHead}]->因磁盘挂载异常停止{obj.MainId}的录制计划失败->{JsonHelper.ToJson(rs2)}");
+                                                            }
+                                                            else
+                                                            {
+                                                                GCommon.Logger.Info(
+                                                                    $"[{Common.LoggerHead}]->因磁盘挂载异常停止{obj.MainId}的录制计划成功->{JsonHelper.ToJson(rs2)}");
+                                                            }
+                                                        }
+                                                        catch (Exception ex)
+                                                        {
+                                                            GCommon.Logger.Error(
+                                                                $"[{Common.LoggerHead}]->因磁盘挂载异常停止{obj.MainId}的录制计划失败->{ex.Message}->{ex.StackTrace}");
+                                                        }
+                                                    }
+
+                                                    break;
+                                                }
+
+                                                diskuseage = true;
+                                            }
+                                        }
+                                    }
+
+                                    if (!diskuseage)
+                                    {
+                                        Thread.Sleep(100);
+                                        continue;
+                                    }
+
                                     var videoChannel = videoChannelList.FindLast(x => x.MainId.Equals(obj.MainId));
                                     if (videoChannel != null)
                                     {
@@ -257,14 +367,14 @@ namespace AKStreamWeb.AutoTask
                                         if (recordPlan != null && recordPlan.Enable == true)
                                         {
                                             //说明绑定了录制模板
-                                            var fileSize = getRecordFileSize(videoChannel.MainId); //得到文件总长度
-                                            var fileDateList = getRecordFileDataList(videoChannel.MainId); //得到记录天数列表
+                                            var fileSize = GetRecordFileSize(videoChannel.MainId); //得到文件总长度
+                                            var fileDateList = GetRecordFileDataList(videoChannel.MainId); //得到记录天数列表
                                             if (fileDateList == null)
                                             {
                                                 fileDateList = new List<string>();
                                             }
 
-                                            var inRange = checkTimeRange(recordPlan);
+                                            var inRange = CheckTimeRange(recordPlan);
                                             bool stopIt = false;
                                             if (!inRange)
                                             {
@@ -297,7 +407,7 @@ namespace AKStreamWeb.AutoTask
                                                         info +=
                                                             $"->限制录制空间:{recordPlan.LimitSpace}Bytes<实际录制空间:{fileSize}Bytes";
                                                         info += !inRange ? "->超出录制模板规定的时间区间" : "";
-                                                         GCommon.Logger.Info(
+                                                        GCommon.Logger.Info(
                                                             $"[{Common.LoggerHead}]->{info}");
                                                         MediaServerService.StopRecord(videoChannel.MediaServerId,
                                                             videoChannel.MainId, out rs);
@@ -306,7 +416,7 @@ namespace AKStreamWeb.AutoTask
                                                         if (!inRange)
                                                         {
                                                             string info3 = "超出录制模板规定的时间区间";
-                                                             GCommon.Logger.Info(
+                                                            GCommon.Logger.Info(
                                                                 $"[{Common.LoggerHead}]->自动停止录制文件条件被触发->{info3}->{obj.MediaServerId}->{obj.MainId}->{videoChannel.RecordPlanName}");
                                                             MediaServerService.StopRecord(videoChannel.MediaServerId,
                                                                 videoChannel.MainId, out rs);
@@ -320,7 +430,7 @@ namespace AKStreamWeb.AutoTask
                                                                 : "";
                                                             info2 +=
                                                                 $"->限制录制空间:{recordPlan.LimitSpace}Bytes<实际录制空间:{fileSize}Bytes";
-                                                             GCommon.Logger.Info(
+                                                            GCommon.Logger.Info(
                                                                 $"[{Common.LoggerHead}]->{info2}");
                                                             bool p = false;
                                                             if (recordPlan.LimitDays < fileDateList.Count) //先一天一天删除
@@ -341,13 +451,14 @@ namespace AKStreamWeb.AutoTask
 
                                                             if (p)
                                                             {
-                                                                fileSize = getRecordFileSize(videoChannel
+                                                                fileSize = GetRecordFileSize(videoChannel
                                                                     .MainId); //删除完一天以后再取一下文件总长度
                                                             }
 
                                                             if (recordPlan.LimitSpace < fileSize) //还大，再删除一个文件
                                                             {
-                                                                deleteFileOneByOne(fileSize, obj.MediaServerStreamInfo,
+                                                                DeleteFileOneByOne(fileSize,
+                                                                    obj.MediaServerStreamInfo,
                                                                     recordPlan);
                                                             }
                                                         }
@@ -360,7 +471,7 @@ namespace AKStreamWeb.AutoTask
                                                 if (obj.MediaServerStreamInfo.IsRecorded == false && inRange &&
                                                     stopIt == false)
                                                 {
-                                                     GCommon.Logger.Info(
+                                                    GCommon.Logger.Info(
                                                         $"[{Common.LoggerHead}]->自动启动录制文件条件被触发->{obj.MediaServerId}->{obj.MainId}->{videoChannel.RecordPlanName}" +
                                                         $"限制录制文件天数:{recordPlan.LimitDays}>实际录制文件天数:{fileDateList.Count}->限制录制空间:{recordPlan.LimitSpace}Bytes>实际录制空间:{fileSize}Bytes" +
                                                         $"录制计划模板中时间区间被击中，开始录制音视频流");
@@ -382,7 +493,7 @@ namespace AKStreamWeb.AutoTask
                                                                 : "";
                                                             info2 +=
                                                                 $"->限制录制空间:{recordPlan.LimitSpace}Bytes<实际录制空间:{fileSize}Bytes";
-                                                             GCommon.Logger.Info(
+                                                            GCommon.Logger.Info(
                                                                 $"[{Common.LoggerHead}]->{info2}");
                                                             bool p = false;
                                                             if (recordPlan.LimitDays < fileDateList.Count) //先一天一天删除
@@ -403,20 +514,21 @@ namespace AKStreamWeb.AutoTask
 
                                                             if (p)
                                                             {
-                                                                fileSize = getRecordFileSize(videoChannel
+                                                                fileSize = GetRecordFileSize(videoChannel
                                                                     .MainId); //删除完一天以后再取一下文件总长度
                                                             }
 
                                                             if (recordPlan.LimitSpace < fileSize) //还大，再删除一个文件
                                                             {
-                                                                deleteFileOneByOne(fileSize, obj.MediaServerStreamInfo,
+                                                                DeleteFileOneByOne(fileSize,
+                                                                    obj.MediaServerStreamInfo,
                                                                     recordPlan);
                                                             }
                                                         }
                                                         else if (recordPlan.LimitSpace < fileSize)
                                                         {
                                                             //如果文件天数不足，则删除一个文件
-                                                            deleteFileOneByOne(fileSize, obj.MediaServerStreamInfo,
+                                                            DeleteFileOneByOne(fileSize, obj.MediaServerStreamInfo,
                                                                 recordPlan);
                                                         }
                                                     }
@@ -427,7 +539,7 @@ namespace AKStreamWeb.AutoTask
                                         {
                                             if (obj.MediaServerStreamInfo.IsRecorded == true)
                                             {
-                                                 GCommon.Logger.Info(
+                                                GCommon.Logger.Info(
                                                     $"[{Common.LoggerHead}]->自动停止录制条件被触发，结束录制音视频流->{obj.MediaServerId}->{obj.MainId}->{videoChannel.RecordPlanName}-录制计划模板已禁用");
 
                                                 MediaServerService.StopRecord(videoChannel.MediaServerId,
@@ -438,7 +550,7 @@ namespace AKStreamWeb.AutoTask
                                         {
                                             if (obj.MediaServerStreamInfo.IsRecorded == true)
                                             {
-                                                 GCommon.Logger.Info(
+                                                GCommon.Logger.Info(
                                                     $"[{Common.LoggerHead}]->自动停止录制条件被触发，结束录制音视频流->{obj.MediaServerId}->{obj.MainId}->未绑定录制计划模板");
 
                                                 MediaServerService.StopRecord(videoChannel.MediaServerId,

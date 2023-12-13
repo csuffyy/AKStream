@@ -44,7 +44,7 @@ namespace LibZLMediaKitMediaServer
                 Message = ErrorMessage.ErrorDic![ErrorNumber.None],
             };
 
-            string url = _useSSL ? "https://" : "http://" + $"{_ipAddress}:{_webApiPort}{_baseUri}getThreadsLoad";
+            string url = (_useSSL ? "https://" : "http://") + $"{_ipAddress}:{_webApiPort}{_baseUri}getThreadsLoad?secret={_secret}";
             try
             {
                 var httpRet = NetHelper.HttpGetRequest(url, null, "utf-8", _httpClientTimeout);
@@ -112,7 +112,7 @@ namespace LibZLMediaKitMediaServer
                 Message = ErrorMessage.ErrorDic![ErrorNumber.None],
             };
 
-            string url = _useSSL ? "https://" : "http://" + $"{_ipAddress}:{_webApiPort}{_baseUri}getWorkThreadsLoad";
+            string url = (_useSSL ? "https://" : "http://") + $"{_ipAddress}:{_webApiPort}{_baseUri}getWorkThreadsLoad?secret={_secret}";
             try
             {
                 var httpRet = NetHelper.HttpGetRequest(url, null, "utf-8", _httpClientTimeout);
@@ -180,7 +180,7 @@ namespace LibZLMediaKitMediaServer
                 Message = ErrorMessage.ErrorDic![ErrorNumber.None],
             };
 
-            string url = _useSSL ? "https://" : "http://" + $"{_ipAddress}:{_webApiPort}{_baseUri}getServerConfig";
+            string url = (_useSSL ? "https://" : "http://") + $"{_ipAddress}:{_webApiPort}{_baseUri}getServerConfig";
             try
             {
                 var req = new ReqZLMediaKitGetSystemConfig();
@@ -251,7 +251,7 @@ namespace LibZLMediaKitMediaServer
                 Message = ErrorMessage.ErrorDic![ErrorNumber.None],
             };
 
-            string url = _useSSL ? "https://" : "http://" + $"{_ipAddress}:{_webApiPort}{_baseUri}restartServer";
+            string url = (_useSSL ? "https://" : "http://") + $"{_ipAddress}:{_webApiPort}{_baseUri}restartServer";
             try
             {
                 var req = new ReqZLMediaKitRequestBase();
@@ -315,7 +315,7 @@ namespace LibZLMediaKitMediaServer
         /// <param name="req"></param>
         /// <param name="rs"></param>
         /// <returns></returns>
-        public ResZLMediaKitMediaList GetMediaList(ResZLMediaKitGetMediaList req, out ResponseStruct rs)
+        public ResZLMediaKitMediaList GetMediaList(ReqZLMediaKitGetMediaList req, out ResponseStruct rs)
         {
             rs = new ResponseStruct()
             {
@@ -323,7 +323,7 @@ namespace LibZLMediaKitMediaServer
                 Message = ErrorMessage.ErrorDic![ErrorNumber.None],
             };
 
-            string url = _useSSL ? "https://" : "http://" + $"{_ipAddress}:{_webApiPort}{_baseUri}getMediaList";
+            string url = (_useSSL ? "https://" : "http://") + $"{_ipAddress}:{_webApiPort}{_baseUri}getMediaList";
             try
             {
                 req.Secret = this._secret;
@@ -394,7 +394,9 @@ namespace LibZLMediaKitMediaServer
                 Message = ErrorMessage.ErrorDic![ErrorNumber.None],
             };
 
-            string url = _useSSL ? "https://" : "http://" + $"{_ipAddress}:{_webApiPort}{_baseUri}close_streams";
+
+            string url = (_useSSL ? "https://" : "http://") + $"{_ipAddress}:{_webApiPort}{_baseUri}close_streams";
+
             try
             {
                 req.Secret = this._secret;
@@ -464,7 +466,7 @@ namespace LibZLMediaKitMediaServer
                 Message = ErrorMessage.ErrorDic![ErrorNumber.None],
             };
 
-            string url = _useSSL ? "https://" : "http://" + $"{_ipAddress}:{_webApiPort}{_baseUri}getAllSession";
+            string url = (_useSSL ? "https://" : "http://") + $"{_ipAddress}:{_webApiPort}{_baseUri}getAllSession";
             try
             {
                 req.Secret = this._secret;
@@ -535,7 +537,7 @@ namespace LibZLMediaKitMediaServer
                 Message = ErrorMessage.ErrorDic![ErrorNumber.None],
             };
 
-            string url = _useSSL ? "https://" : "http://" + $"{_ipAddress}:{_webApiPort}{_baseUri}kick_session";
+            string url = (_useSSL ? "https://" : "http://") + $"{_ipAddress}:{_webApiPort}{_baseUri}kick_session";
             try
             {
                 req.Secret = this._secret;
@@ -605,7 +607,7 @@ namespace LibZLMediaKitMediaServer
                 Message = ErrorMessage.ErrorDic![ErrorNumber.None],
             };
 
-            string url = _useSSL ? "https://" : "http://" + $"{_ipAddress}:{_webApiPort}{_baseUri}kick_sessions";
+            string url = (_useSSL ? "https://" : "http://") + $"{_ipAddress}:{_webApiPort}{_baseUri}kick_sessions";
             try
             {
                 req.Secret = this._secret;
@@ -676,7 +678,7 @@ namespace LibZLMediaKitMediaServer
                 Message = ErrorMessage.ErrorDic![ErrorNumber.None],
             };
 
-            string url = _useSSL ? "https://" : "http://" + $"{_ipAddress}:{_webApiPort}{_baseUri}addStreamProxy";
+            string url = (_useSSL ? "https://" : "http://") + $"{_ipAddress}:{_webApiPort}{_baseUri}addStreamProxy";
             try
             {
                 req.Secret = this._secret;
@@ -684,6 +686,37 @@ namespace LibZLMediaKitMediaServer
                 var httpRet = NetHelper.HttpPostRequest(url, null, reqData, "utf-8", _httpClientTimeout);
                 if (!string.IsNullOrEmpty(httpRet))
                 {
+                    //当发现有流已存在时断掉这个流
+                    if (httpRet.ToLower().Contains("-1") && httpRet.ToLower().Contains("this") &&
+                        httpRet.ToLower().Contains("stream") &&
+                        httpRet.ToLower().Contains("already") && httpRet.ToLower().Contains("exists"))
+                    {
+                        var req2 = new ReqZLMediaKitCloseStreams()
+                        {
+                            App = req.App,
+                            Force = true,
+                            Stream = req.Stream,
+                            Vhost = req.Vhost,
+                        };
+                        try
+                        {
+                            CloseStreams(req2, out _);
+                        }
+                        catch
+                        {
+                        }
+
+                        rs = new ResponseStruct()
+                        {
+                            Code = ErrorNumber.MediaServer_WebApiDataExcept,
+                            Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_WebApiDataExcept],
+                            ExceptMessage = httpRet,
+                            ExceptStackTrace = JsonHelper.ToJson(httpRet + "\r\n" +
+                                                                 "此处处理了AddStreamProxy返回This stream already exists的问题，先断开这个流，等后续拉流时应该能正常拉到"),
+                        };
+                        return null;
+                    }
+
                     if (UtilsHelper.HttpClientResponseIsNetWorkError(httpRet))
                     {
                         rs = new ResponseStruct()
@@ -747,7 +780,7 @@ namespace LibZLMediaKitMediaServer
                 Message = ErrorMessage.ErrorDic![ErrorNumber.None],
             };
 
-            string url = _useSSL ? "https://" : "http://" + $"{_ipAddress}:{_webApiPort}{_baseUri}addFFmpegSource";
+            string url = (_useSSL ? "https://" : "http://") + $"{_ipAddress}:{_webApiPort}{_baseUri}addFFmpegSource";
             try
             {
                 req.Secret = this._secret;
@@ -817,7 +850,7 @@ namespace LibZLMediaKitMediaServer
                 Message = ErrorMessage.ErrorDic![ErrorNumber.None],
             };
 
-            string url = _useSSL ? "https://" : "http://" + $"{_ipAddress}:{_webApiPort}{_baseUri}delStreamProxy";
+            string url = (_useSSL ? "https://" : "http://") + $"{_ipAddress}:{_webApiPort}{_baseUri}delStreamProxy";
             try
             {
                 req.Secret = this._secret;
@@ -888,7 +921,7 @@ namespace LibZLMediaKitMediaServer
                 Message = ErrorMessage.ErrorDic![ErrorNumber.None],
             };
 
-            string url = _useSSL ? "https://" : "http://" + $"{_ipAddress}:{_webApiPort}{_baseUri}delFFmpegSource";
+            string url = (_useSSL ? "https://" : "http://") + $"{_ipAddress}:{_webApiPort}{_baseUri}delFFmpegSource";
             try
             {
                 req.Secret = this._secret;
@@ -958,7 +991,7 @@ namespace LibZLMediaKitMediaServer
                 Message = ErrorMessage.ErrorDic![ErrorNumber.None],
             };
 
-            string url = _useSSL ? "https://" : "http://" + $"{_ipAddress}:{_webApiPort}{_baseUri}getRtpInfo";
+            string url = (_useSSL ? "https://" : "http://") + $"{_ipAddress}:{_webApiPort}{_baseUri}getRtpInfo";
             try
             {
                 req.Secret = this._secret;
@@ -1029,11 +1062,14 @@ namespace LibZLMediaKitMediaServer
                 Message = ErrorMessage.ErrorDic![ErrorNumber.None],
             };
 
-            string url = _useSSL ? "https://" : "http://" + $"{_ipAddress}:{_webApiPort}{_baseUri}startRecord";
+            string url = (_useSSL ? "https://" : "http://") + $"{_ipAddress}:{_webApiPort}{_baseUri}startRecord";
             try
             {
                 req.Secret = this._secret;
                 string reqData = JsonHelper.ToJson(req);
+                GCommon.Logger.Debug(
+                    $"[{Common.LoggerHead}]->请求录制接口->{reqData}");
+
                 var httpRet = NetHelper.HttpPostRequest(url, null, reqData, "utf-8", _httpClientTimeout);
                 if (!string.IsNullOrEmpty(httpRet))
                 {
@@ -1100,7 +1136,7 @@ namespace LibZLMediaKitMediaServer
                 Message = ErrorMessage.ErrorDic![ErrorNumber.None],
             };
 
-            string url = _useSSL ? "https://" : "http://" + $"{_ipAddress}:{_webApiPort}{_baseUri}stopRecord";
+            string url = (_useSSL ? "https://" : "http://") + $"{_ipAddress}:{_webApiPort}{_baseUri}stopRecord";
             try
             {
                 req.Secret = this._secret;
@@ -1171,7 +1207,7 @@ namespace LibZLMediaKitMediaServer
                 Message = ErrorMessage.ErrorDic![ErrorNumber.None],
             };
 
-            string url = _useSSL ? "https://" : "http://" + $"{_ipAddress}:{_webApiPort}{_baseUri}isRecording";
+            string url = (_useSSL ? "https://" : "http://") + $"{_ipAddress}:{_webApiPort}{_baseUri}isRecording";
             try
             {
                 req.Secret = this._secret;
@@ -1241,14 +1277,11 @@ namespace LibZLMediaKitMediaServer
                 Message = ErrorMessage.ErrorDic![ErrorNumber.None],
             };
             req.Url = req.Url.Replace(_ipAddress, "127.0.0.1");
-            string url = _useSSL
-                ? "https://"
-                : "http://" +
-                  $"{_ipAddress}:{_webApiPort}{_baseUri}getSnap?secret={this._secret}&url={req.Url}&timeout_sec={req.Timeout_Sec}&expire_sec={req.Expire_Sec}";
-            
+            string url = (_useSSL ? "https://" : "http://") +
+                         $"{_ipAddress}:{_webApiPort}{_baseUri}getSnap?secret={this._secret}&url={req.Url}&timeout_sec={req.Timeout_Sec}&expire_sec={req.Expire_Sec}";
+
             try
             {
-             
                 string base64 = "";
                 var httpRet = NetHelper.DownloadFileToBase64(url, out base64);
                 if (httpRet && !string.IsNullOrEmpty(base64))
@@ -1257,7 +1290,6 @@ namespace LibZLMediaKitMediaServer
                 }
                 else
                 {
-                
                     rs = new ResponseStruct()
                     {
                         Code = ErrorNumber.MediaServer_WebApiDataExcept,
@@ -1294,7 +1326,7 @@ namespace LibZLMediaKitMediaServer
                 Message = ErrorMessage.ErrorDic![ErrorNumber.None],
             };
 
-            string url = _useSSL ? "https://" : "http://" + $"{_ipAddress}:{_webApiPort}{_baseUri}openRtpServer";
+            string url = (_useSSL ? "https://" : "http://") + $"{_ipAddress}:{_webApiPort}{_baseUri}openRtpServer";
             try
             {
                 req.Secret = this._secret;
@@ -1365,7 +1397,7 @@ namespace LibZLMediaKitMediaServer
                 Message = ErrorMessage.ErrorDic![ErrorNumber.None],
             };
 
-            string url = _useSSL ? "https://" : "http://" + $"{_ipAddress}:{_webApiPort}{_baseUri}closeRtpServer";
+            string url = (_useSSL ? "https://" : "http://") + $"{_ipAddress}:{_webApiPort}{_baseUri}closeRtpServer";
             try
             {
                 req.Secret = this._secret;
@@ -1436,7 +1468,7 @@ namespace LibZLMediaKitMediaServer
                 Message = ErrorMessage.ErrorDic![ErrorNumber.None],
             };
 
-            string url = _useSSL ? "https://" : "http://" + $"{_ipAddress}:{_webApiPort}{_baseUri}listRtpServer";
+            string url = (_useSSL ? "https://" : "http://") + $"{_ipAddress}:{_webApiPort}{_baseUri}listRtpServer";
             try
             {
                 req.Secret = this._secret;
@@ -1506,7 +1538,7 @@ namespace LibZLMediaKitMediaServer
                 Message = ErrorMessage.ErrorDic![ErrorNumber.None],
             };
 
-            string url = _useSSL ? "https://" : "http://" + $"{_ipAddress}:{_webApiPort}{_baseUri}startSendRtp";
+            string url = (_useSSL ? "https://" : "http://") + $"{_ipAddress}:{_webApiPort}{_baseUri}startSendRtp";
             try
             {
                 req.Secret = this._secret;
@@ -1576,7 +1608,7 @@ namespace LibZLMediaKitMediaServer
                 Message = ErrorMessage.ErrorDic![ErrorNumber.None],
             };
 
-            string url = _useSSL ? "https://" : "http://" + $"{_ipAddress}:{_webApiPort}{_baseUri}stopSendRtp";
+            string url = (_useSSL ? "https://" : "http://") + $"{_ipAddress}:{_webApiPort}{_baseUri}stopSendRtp";
             try
             {
                 req.Secret = this._secret;

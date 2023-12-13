@@ -1,8 +1,8 @@
 using System.Threading;
 using AKStreamWeb.Services;
 using LibCommon;
+using LibCommon.Structs;
 using LibCommon.Structs.DBModels;
-using LibLogger;
 
 namespace AKStreamWeb.AutoTask
 {
@@ -28,14 +28,29 @@ namespace AKStreamWeb.AutoTask
             {
                 try
                 {
-                    
+                    #region debug sql output
+
+                    if (Common.IsDebug)
+                    {
+                        var sql = ORMHelper.Db.Select<VideoChannel>().ToSql();
+                        GCommon.Logger.Debug(
+                            $"[{Common.LoggerHead}]->KeepLive->执行SQL:->{sql}");
+                    }
+
+                    #endregion
+
                     var dbRet = ORMHelper.Db.Select<VideoChannel>().ToList();
                     if (dbRet != null && dbRet.Count > 0)
                     {
                         foreach (var obj in dbRet)
                         {
-                            var listRet = GCommon.Ldb.VideoOnlineInfo.FindOne(x =>
-                                x.MainId.Equals(obj.MainId) && x.MediaServerId.Equals(obj.MediaServerId));
+                            VideoChannelMediaInfo listRet = null;
+                            lock (GCommon.Ldb.LiteDBLockObj)
+                            {
+                                listRet = GCommon.Ldb.VideoOnlineInfo.FindOne(x =>
+                                    x.MainId.Equals(obj.MainId) && x.MediaServerId.Equals(obj.MediaServerId));
+                            }
+
                             if (obj != null && obj.AutoVideo.Equals(true) && obj.NoPlayerBreak.Equals(false) &&
                                 obj.Enabled.Equals(true))
                             {
@@ -50,12 +65,12 @@ namespace AKStreamWeb.AutoTask
                                             out ResponseStruct rs);
                                         if (!rs.Code.Equals(ErrorNumber.None) || streamLiveRet == null)
                                         {
-                                             GCommon.Logger.Warn(
+                                            GCommon.Logger.Warn(
                                                 $"[{Common.LoggerHead}]->自动推流失败->{obj.MediaServerId}->{obj.MainId}");
                                         }
                                         else
                                         {
-                                             GCommon.Logger.Info(
+                                            GCommon.Logger.Info(
                                                 $"[{Common.LoggerHead}]->自动推流成功->{obj.MediaServerId}->{obj.MainId}");
                                         }
                                     }
@@ -74,12 +89,12 @@ namespace AKStreamWeb.AutoTask
                                             out ResponseStruct rs);
                                         if (!rs.Code.Equals(ErrorNumber.None) || streamLiveRet == null)
                                         {
-                                             GCommon.Logger.Warn(
+                                            GCommon.Logger.Warn(
                                                 $"[{Common.LoggerHead}]->自动结束推流失败->{obj.MediaServerId}->{obj.MainId}");
                                         }
                                         else
                                         {
-                                             GCommon.Logger.Info(
+                                            GCommon.Logger.Info(
                                                 $"[{Common.LoggerHead}]->自动结束推流成功->{obj.MediaServerId}->{obj.MainId}");
                                         }
                                     }

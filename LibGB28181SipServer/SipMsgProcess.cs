@@ -10,7 +10,6 @@ using LibCommon.Structs;
 using LibCommon.Structs.GB28181;
 using LibCommon.Structs.GB28181.Net.SIP;
 using LibCommon.Structs.GB28181.XML;
-using LibLogger;
 using Newtonsoft.Json;
 using SIPSorcery.SIP;
 using SIPSorcery.SIP.App;
@@ -252,7 +251,7 @@ namespace LibGB28181SipServer
                             }
 
                             if (tmpSipDevice.SipChannels.Count > 0
-                            ) //当正确收到过一次以后就返回成功
+                               ) //当正确收到过一次以后就返回成功
                             {
                                 var _taskTag = $"CATALOG:{tmpSipDevice.DeviceId}";
                                 var ret = Common.NeedResponseRequests.TryRemove(_taskTag,
@@ -335,14 +334,15 @@ namespace LibGB28181SipServer
                 switch (cmdType)
                 {
                     case "KEEPALIVE": //处理心跳
-
                         string sipDeviceId = bodyXml.Element("DeviceID")?.Value.ToUpper()!;
                         var tmpSipDevice =
                             Common.SipDevices.FindLast((x => x.DeviceId.Equals(sipDeviceId)));
                         if (tmpSipDevice != null)
                         {
-                            await SendKeepAliveOk(sipRequest);
                             var time = DateTime.Now;
+                            //2022.8.17
+                            //如果间隔注册时间超过最大注册时间，表示设备需要重新注册，发送BadRequest消息
+                            await SendKeepAliveOk(sipRequest);
                             if (!tmpSipDevice.IsReday)
                             {
                                 tmpSipDevice.IsReday = true; //设备已就绪
@@ -357,11 +357,17 @@ namespace LibGB28181SipServer
                                 OnKeepaliveReceived?.Invoke(sipDeviceId, time, tmpSipDevice.KeepAliveLostTime);
                             }); //抛线程出去处理
 
+                            if (tmpSipDevice.KeepAliveTime != null) //获取设备的实际心跳周期
+                            {
+                                tmpSipDevice.KeepAliveTimeSpentMS =
+                                    (time - tmpSipDevice.KeepAliveTime).TotalMilliseconds;
+                            }
 
                             tmpSipDevice.KeepAliveTime = time;
-                            if (tmpSipDevice.RemoteEndPoint != null && tmpSipDevice.RemoteEndPoint != remoteEndPoint &&
+                            if (tmpSipDevice.RemoteEndPoint != null &&
+                                tmpSipDevice.RemoteEndPoint != remoteEndPoint &&
                                 tmpSipDevice.RemoteEndPoint.Protocol == SIPProtocolsEnum.udp
-                            ) //如果udp协议当endpoint发生变化时更新成新的
+                               ) //如果udp协议当endpoint发生变化时更新成新的
                             {
                                 //udp协议下，如果发现心跳中的remoteEndPoint与注册时的remoteEndPoint不同时，将心跳的remoteEndPoint秒换老的remoteEndPoint以保证nat穿透下Sip通讯的正常使用
                                 tmpSipDevice.RemoteEndPoint = remoteEndPoint;
@@ -484,15 +490,15 @@ namespace LibGB28181SipServer
                             var ret = Common.NeedResponseRequests.TryRemove(callId, out NeedReturnTask _task);
                             if (ret && _task != null)
                             {
-                                ((RecordInfo.RecItem) _task.Obj).PushStatus = PushStatus.IDLE;
-                                ((RecordInfo.RecItem) _task.Obj).MediaServerStreamInfo = null;
+                                ((RecordInfo.RecItem)_task.Obj).PushStatus = PushStatus.IDLE;
+                                ((RecordInfo.RecItem)_task.Obj).MediaServerStreamInfo = null;
                                 Task.Run(() =>
                                 {
-                                    OnInviteHistoryVideoFinished?.Invoke((RecordInfo.RecItem) _task.Obj);
+                                    OnInviteHistoryVideoFinished?.Invoke((RecordInfo.RecItem)_task.Obj);
                                 }); //抛线程出去处理
 
                                 GCommon.Logger.Debug(
-                                    $"[{Common.LoggerHead}]->收到来自{remoteEndPoint}的点播结束消息->{_task.SipDevice.DeviceId}->{_task.SipChannel.DeviceId}->Stream->{((RecordInfo.RecItem) _task.Obj).SsrcId}:{((RecordInfo.RecItem) _task.Obj).Stream}");
+                                    $"[{Common.LoggerHead}]->收到来自{remoteEndPoint}的点播结束消息->{_task.SipDevice.DeviceId}->{_task.SipChannel.DeviceId}->Stream->{((RecordInfo.RecItem)_task.Obj).SsrcId}:{((RecordInfo.RecItem)_task.Obj).Stream}");
                             }
                         }
 
@@ -510,6 +516,15 @@ namespace LibGB28181SipServer
         public static void DoKickSipDevice(SipDevice sipDevice)
         {
             string tmpSipDeviceStr = JsonHelper.ToJson(sipDevice);
+            try
+            {
+                //发一个心跳异常消息给设备，由于不确定是否可行，为防止报错，用try..catch包起来
+                Task.Run(() => { SendKeepAliveExcept(sipDevice.LastSipRequest); }); //抛线程出去处理
+            }
+            catch
+            {
+            }
+
             Task.Run(() => { OnUnRegisterReceived?.Invoke(tmpSipDeviceStr); }); //抛线程出去处理
 
             lock (Common.SipDevicesLock)
@@ -572,7 +587,7 @@ namespace LibGB28181SipServer
             return true; //需要鉴权
         }
 
-       /// <summary>
+        /// <summary>
         /// 处理sip设备注册事件
         /// </summary>
         /// <param name="localSipChannel"></param>
@@ -639,7 +654,7 @@ namespace LibGB28181SipServer
                     if (Common.SipServerConfig.Authentication &&
                         CheckDeviceAuthenticationNeed(sipDeviceId, sipDeviceIpV4Address, sipDeviceIpV6Address))
                     {
-                        if (sipRequest.Header.AuthenticationHeaders.Count<=0 )
+                        if (sipRequest.Header.AuthenticationHeaders.Count <= 0)
                         {
                             SIPAuthenticationHeader authHeader =
                                 new SIPAuthenticationHeader(SIPAuthorisationHeadersEnum.WWWAuthenticate,
@@ -653,10 +668,12 @@ namespace LibGB28181SipServer
 
                             var unAuthorizedResponse = SIPResponse.GetResponse(sipRequest,
                                 SIPResponseStatusCodesEnum.Unauthorised, null);
-                            unAuthorizedResponse.Header.AuthenticationHeaders.Add( unAuthorisedHead.AuthenticationRequiredHeader);
+                            unAuthorizedResponse.Header.AuthenticationHeaders.Add(unAuthorisedHead
+                                .AuthenticationRequiredHeader);
 
                             unAuthorizedResponse.Header.Allow = null;
                             unAuthorizedResponse.Header.Expires = 7200;
+
                             await Common.SipServer.SipTransport.SendResponseAsync(unAuthorizedResponse);
                             return;
                         }
@@ -668,9 +685,10 @@ namespace LibGB28181SipServer
                              HA2=MD5(Method:Uri)//Method一般有INVITE, ACK, OPTIONS, BYE, CANCEL, REGISTER；Uri可以在字段“Authorization”找到
                              response = MD5(HA1:nonce:HA2)
                              */
-                            
+
                             string ha1 = UtilsHelper.Md5(sipRequest.Header.AuthenticationHeaders[0].SIPDigest.Username +
-                                                         ":" + sipRequest.Header.AuthenticationHeaders[0].SIPDigest.Realm +
+                                                         ":" + sipRequest.Header.AuthenticationHeaders[0].SIPDigest
+                                                             .Realm +
                                                          ":" + (string.IsNullOrEmpty(password)
                                                              ? Common.SipServerConfig.SipPassword
                                                              : password));
@@ -678,9 +696,10 @@ namespace LibGB28181SipServer
                             string ha2 = UtilsHelper.Md5("REGISTER" + ":" +
                                                          sipRequest.Header.AuthenticationHeaders[0].SIPDigest.URI);
                             string ha3 = UtilsHelper.Md5(ha1 + ":" +
-                                                         sipRequest.Header.AuthenticationHeaders[0].SIPDigest.Nonce + ":" +
+                                                         sipRequest.Header.AuthenticationHeaders[0].SIPDigest.Nonce +
+                                                         ":" +
                                                          ha2);
-                          
+
                             if (!ha3.Equals(sipRequest.Header.AuthenticationHeaders[0].SIPDigest.Response))
                             {
                                 GCommon.Logger.Debug(
@@ -780,6 +799,12 @@ namespace LibGB28181SipServer
             SIPNonInviteTransaction registerTransaction =
                 new SIPNonInviteTransaction(Common.SipServer.SipTransport, sipRequest, null);
             SIPResponse retResponse = SIPResponse.GetResponse(sipRequest, registerResponse, null);
+            /*增加tplink 摄像头支持*/
+            retResponse.Header.Contact = sipRequest.Header.Contact;
+            retResponse.Header.Expires = sipRequest.Header.Expires;
+            retResponse.Header.SetDateHeader();
+            /*增加tplink 摄像头支持*/
+            retResponse.Header.Date = DateTime.Now.ToString("yyyy-MM-dd’T’HH: mm:ss.SSS"); //增加与服务器授时
             registerTransaction.SendResponse(retResponse);
         }
 
@@ -824,7 +849,7 @@ namespace LibGB28181SipServer
                 new SIPToHeader(to.ToName, to.ToURI, to.ToTag),
                 new SIPFromHeader("", from.FromURI, from.FromTag));
             req.Header.Contact = new List<SIPContactHeader>()
-                {new SIPContactHeader(sipResponse.Header.From.FromName, sipResponse.Header.From.FromURI)};
+                { new SIPContactHeader(sipResponse.Header.From.FromName, sipResponse.Header.From.FromURI) };
             req.Header.UserAgent = ConstString.SIP_USERAGENT_STRING;
             req.Header.Allow = null;
             req.Header.Vias = sipResponse.Header.Vias;
@@ -853,7 +878,7 @@ namespace LibGB28181SipServer
                 new SIPToHeader(to.ToName, to.ToURI, to.ToTag),
                 new SIPFromHeader("", from.FromURI, from.FromTag));
             req.Header.Contact = new List<SIPContactHeader>()
-                {new SIPContactHeader(sipResponse.Header.From.FromName, sipResponse.Header.From.FromURI)};
+                { new SIPContactHeader(sipResponse.Header.From.FromName, sipResponse.Header.From.FromURI) };
             req.Header.UserAgent = ConstString.SIP_USERAGENT_STRING;
             req.Header.Allow = null;
             req.Header.Vias = sipResponse.Header.Vias;
@@ -872,7 +897,6 @@ namespace LibGB28181SipServer
         /// <returns></returns>
         private static async Task InviteOk(SIPResponse sipResponse, SipChannel sipChannel)
         {
-         
             var from = sipResponse.Header.From;
             var to = sipResponse.Header.To;
             string callId = sipResponse.Header.CallId;
@@ -882,7 +906,7 @@ namespace LibGB28181SipServer
                 new SIPToHeader(to.ToName, to.ToURI, to.ToTag),
                 new SIPFromHeader("", from.FromURI, from.FromTag));
             req.Header.Contact = new List<SIPContactHeader>()
-                {new SIPContactHeader(sipResponse.Header.From.FromName, sipResponse.Header.From.FromURI)};
+                { new SIPContactHeader(sipResponse.Header.From.FromName, sipResponse.Header.From.FromURI) };
             req.Header.UserAgent = ConstString.SIP_USERAGENT_STRING;
             req.Header.Allow = null;
             req.Header.Vias = sipResponse.Header.Vias;
@@ -901,7 +925,6 @@ namespace LibGB28181SipServer
         /// <returns></returns>
         private static async Task InviteOk(SIPResponse sipResponse, RecordInfo.RecItem record)
         {
-          
             var from = sipResponse.Header.From;
             var to = sipResponse.Header.To;
             string callId = sipResponse.Header.CallId;
@@ -929,7 +952,7 @@ namespace LibGB28181SipServer
                 new SIPToHeader(to.ToName, to.ToURI, to.ToTag),
                 new SIPFromHeader("", from.FromURI, from.FromTag));
             req.Header.Contact = new List<SIPContactHeader>()
-                {new SIPContactHeader(sipResponse.Header.From.FromName, sipResponse.Header.From.FromURI)};
+                { new SIPContactHeader(sipResponse.Header.From.FromName, sipResponse.Header.From.FromURI) };
             req.Header.UserAgent = ConstString.SIP_USERAGENT_STRING;
             req.Header.Allow = null;
             req.Header.Vias = sipResponse.Header.Vias;
@@ -1016,7 +1039,7 @@ namespace LibGB28181SipServer
                                 }
                                 else
                                 {
-                                    var record = (RecordInfo.RecItem) _task.Obj;
+                                    var record = (RecordInfo.RecItem)_task.Obj;
 
                                     await InviteOk(sipResponse, record);
                                     if (_task.TimeoutCheckTimer != null && _task.TimeoutCheckTimer.Enabled == true)
@@ -1038,21 +1061,21 @@ namespace LibGB28181SipServer
                                 }
                                 else
                                 {
-                                    var record = (RecordInfo.RecItem) _task.Obj;
+                                    var record = (RecordInfo.RecItem)_task.Obj;
                                     await InviteEnd(sipResponse, record);
                                     var ret1 = Common.NeedResponseRequests.TryRemove(
                                         "MEDIASTATUS" + sipResponse.Header.CallId,
                                         out NeedReturnTask _task1);
                                     if (ret1 && _task1 != null)
                                     {
-                                        ((RecordInfo.RecItem) _task1.Obj).PushStatus = PushStatus.IDLE;
-                                        ((RecordInfo.RecItem) _task1.Obj).MediaServerStreamInfo = null;
+                                        ((RecordInfo.RecItem)_task1.Obj).PushStatus = PushStatus.IDLE;
+                                        ((RecordInfo.RecItem)_task1.Obj).MediaServerStreamInfo = null;
                                         Task.Run(() =>
                                         {
-                                            OnInviteHistoryVideoFinished?.Invoke((RecordInfo.RecItem) _task1.Obj);
+                                            OnInviteHistoryVideoFinished?.Invoke((RecordInfo.RecItem)_task1.Obj);
                                         }); //抛线程出去处理
                                         GCommon.Logger.Debug(
-                                            $"[{Common.LoggerHead}]->结束点播->{_task1.SipDevice.DeviceId}->{_task1.SipChannel.DeviceId}->Stream->{((RecordInfo.RecItem) _task1.Obj).SsrcId}:{((RecordInfo.RecItem) _task1.Obj).Stream}");
+                                            $"[{Common.LoggerHead}]->结束点播->{_task1.SipDevice.DeviceId}->{_task1.SipChannel.DeviceId}->Stream->{((RecordInfo.RecItem)_task1.Obj).SsrcId}:{((RecordInfo.RecItem)_task1.Obj).Stream}");
                                     }
                                 }
 
@@ -1073,7 +1096,7 @@ namespace LibGB28181SipServer
                                 case CommandType.RecordInfo:
                                     Common.NeedResponseRequests.TryAdd(
                                         _task.CommandType.ToString().ToUpper() + ":" + _task.SipDevice.DeviceId + ":" +
-                                        _task.SipChannel.DeviceId + ":" + ((SipQueryRecordFile) _task.Obj).TaskId,
+                                        _task.SipChannel.DeviceId + ":" + ((SipQueryRecordFile)_task.Obj).TaskId,
                                         _task); //再次加入等待列表,obj.TaskId中是外部生成的sn
 
                                     break;

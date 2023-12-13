@@ -121,7 +121,8 @@ namespace SIPSorcery.Net
         {
             if (SenderReport == null && ReceiverReport == null)
             {
-                throw new ApplicationException("An RTCP compound packet must have either a Sender or Receiver report set.");
+                throw new ApplicationException(
+                    "An RTCP compound packet must have either a Sender or Receiver report set.");
             }
             else if (SDesReport == null)
             {

@@ -22,7 +22,7 @@ namespace SIPSorcery.Media
 {
     public class AudioEncoder : IAudioEncoder
     {
-        private const int G722_BIT_RATE = 64000;              // G722 sampling rate is 16KHz with bits per sample of 16.
+        private const int G722_BIT_RATE = 64000; // G722 sampling rate is 16KHz with bits per sample of 16.
 
         private G722Codec _g722Codec;
         private G722CodecState _g722CodecState;
@@ -124,7 +124,8 @@ namespace SIPSorcery.Media
                 }
 
                 short[] decodedPcm = new short[encodedSample.Length * 2];
-                int decodedSampleCount = _g722Decoder.Decode(_g722DecoderState, decodedPcm, encodedSample, encodedSample.Length);
+                int decodedSampleCount =
+                    _g722Decoder.Decode(_g722DecoderState, decodedPcm, encodedSample, encodedSample.Length);
 
                 return decodedPcm.Take(decodedSampleCount).ToArray();
             }
@@ -139,13 +140,15 @@ namespace SIPSorcery.Media
             else if (format.Codec == AudioCodecsEnum.L16)
             {
                 // Samples are on the wire as big endian.
-                return encodedSample.Where((x, i) => i % 2 == 0).Select((y, i) => (short)(encodedSample[i * 2] << 8 | encodedSample[i * 2 + 1])).ToArray();
+                return encodedSample.Where((x, i) => i % 2 == 0)
+                    .Select((y, i) => (short)(encodedSample[i * 2] << 8 | encodedSample[i * 2 + 1])).ToArray();
             }
             else if (format.Codec == AudioCodecsEnum.PCM_S16LE)
             {
                 // Samples are on the wire as little endian (well unlikely to be on the wire in this case but when they 
                 // arrive from somewhere like the SkypeBot SDK they will be in little endian format).
-                return encodedSample.Where((x, i) => i % 2 == 0).Select((y, i) => (short)(encodedSample[i * 2 + 1] << 8 | encodedSample[i * 2])).ToArray();
+                return encodedSample.Where((x, i) => i % 2 == 0)
+                    .Select((y, i) => (short)(encodedSample[i * 2 + 1] << 8 | encodedSample[i * 2])).ToArray();
             }
             else
             {
@@ -181,7 +184,8 @@ namespace SIPSorcery.Media
             }
             else
             {
-                throw new ApplicationException($"Sorry don't know how to re-sample PCM from {inRate} to {outRate}. Pull requests welcome!");
+                throw new ApplicationException(
+                    $"Sorry don't know how to re-sample PCM from {inRate} to {outRate}. Pull requests welcome!");
             }
         }
     }

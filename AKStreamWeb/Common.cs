@@ -9,7 +9,6 @@ using LibCommon;
 using LibCommon.Structs;
 using LibGB28181SipClient;
 using LibGB28181SipServer;
-using LibLogger;
 using LibSystemInfo;
 using LibZLMediaKitMediaServer;
 using Newtonsoft.Json;
@@ -32,13 +31,13 @@ namespace AKStreamWeb
         private static AutoLive _autoLive;
         private static AutoRecord _autoRecord;
         private static AutoTaskOther _autoTaskOther;
-      
+
 
         private static ConcurrentDictionary<string, WebHookNeedReturnTask> _webHookNeedReturnTask =
             new ConcurrentDictionary<string, WebHookNeedReturnTask>();
+
         public static DateTime StartupDateTime;
 
-    
 
         /// <summary>
         /// 流媒体服务器列表
@@ -58,15 +57,16 @@ namespace AKStreamWeb
         /// <summary>
         /// Sip服务实例
         /// </summary>
-        public static SipServer SipServer=null;
+        public static SipServer SipServer = null;
 
         /// <summary>
         /// Sip客户端实例
         /// </summary>
-        public static SipClient SipClient=null;
-        
+        public static SipClient SipClient = null;
+
 
         private static List<ShareInviteInfo> _shareInviteChannels = new List<ShareInviteInfo>();
+
         /// <summary>
         /// 共享流列表
         /// </summary>
@@ -78,16 +78,17 @@ namespace AKStreamWeb
 
         static Common()
         {
-
-          
             if (!string.IsNullOrEmpty(GCommon.OutConfigPath))
             {
                 if (!GCommon.OutConfigPath.Trim().EndsWith('/'))
                 {
-                    GCommon.OutConfigPath +=  "/";
+                    GCommon.OutConfigPath += "/";
                 }
-                _configPath= GCommon.OutConfigPath + "AKStreamWeb.json";
+
+                _configPath = GCommon.OutConfigPath + "AKStreamWeb.json";
             }
+
+            _configPath = UtilsHelper.FindPreferredConfigFile(_configPath); //查找优先使用的配置文件
 
             StartupDateTime = DateTime.Now;
             string supportDataBaseList = "MySql\r\n" +
@@ -140,6 +141,7 @@ namespace AKStreamWeb
                 Environment.Exit(0); //退出程序
             }
 
+
 #if (DEBUG)
             Console.WriteLine("[Debug]\t当前程序为Debug编译模式");
             Console.WriteLine("[Debug]\t程序启动路径:" + GCommon.BaseStartPath);
@@ -147,14 +149,15 @@ namespace AKStreamWeb
             Console.WriteLine("[Debug]\t程序运行路径:" + GCommon.WorkSpacePath);
             Console.WriteLine("[Debug]\t程序运行全路径:" + GCommon.WorkSpaceFullPath);
             Console.WriteLine("[Debug]\t程序启动命令:" + GCommon.CommandLine);
-            Console.WriteLine("[Debug]\t程序版本标识:" + Version);
             IsDebug = true;
-
-
 #endif
             try
             {
-                GCommon.Ldb.VideoOnlineInfo.DeleteAll();
+                lock (GCommon.Ldb.LiteDBLockObj)
+                {
+                    GCommon.Ldb.VideoOnlineInfo.DeleteAll();
+                }
+
                 OrmHelper = new ORMHelper(AkStreamWebConfig.OrmConnStr, AkStreamWebConfig.DbType);
             }
             catch (Exception ex)
@@ -201,6 +204,7 @@ namespace AKStreamWeb
                 SipMsgProcess.OnCatalogReceived += SipServerCallBack.OnCatalogReceived;
                 SipMsgProcess.OnDeviceAuthentication += SipServerCallBack.OnAuthentication;
             }
+
             GCommon.Logger.Info($"[{LoggerHead}]->配置情况->是否启用Sip服务端->{AkStreamWebConfig.EnableGB28181Server}");
             if (AkStreamWebConfig.EnableGB28181Client)
             {
@@ -209,17 +213,26 @@ namespace AKStreamWeb
                 {
                     outPath = GCommon.OutConfigPath;
                 }
+
                 SipClient = new SipClient(outPath);
                 SipClient.OnInviteChannel += SipClientProcess.InviteChannel;
                 SipClient.OnDeInviteChannel += SipClientProcess.DeInviteChannel;
             }
+
+            GCommon.Logger.Info($"[{LoggerHead}]->配置情况->未管理流转发功能->{(AkStreamWebConfig.ForwardUnmanagedRtmpRtspRtcStream?"开启":"关闭")}");
+            if (AkStreamWebConfig.ForwardUnmanagedRtmpRtspRtcStream)
+            {
+                GCommon.Logger.Info($"[{LoggerHead}]->配置情况->未管理流接入转发地址->{AkStreamWebConfig.ForwardUrlIn}");
+                GCommon.Logger.Info($"[{LoggerHead}]->配置情况->未管理流注销转发地址->{AkStreamWebConfig.ForwardUrlOut}");
+
+            }
+
             GCommon.Logger.Info($"[{LoggerHead}]->配置情况->是否启用Sip客户端->{AkStreamWebConfig.EnableGB28181Client}");
 
             if (AkStreamWebConfig.EnableGB28181Server == null || AkStreamWebConfig.EnableGB28181Server == true)
             {
                 try
                 {
-
                     ResponseStruct rs;
                     SipServer.Start(out rs);
                     if (!rs.Code.Equals(ErrorNumber.None))
@@ -277,7 +290,7 @@ namespace AKStreamWeb
         }
 
 
-        private static void startTimer()
+        private static void StartTimer()
         {
             if (_perFormanceInfoTimer == null)
             {
@@ -306,8 +319,9 @@ namespace AKStreamWeb
         {
             GCommon.Logger.Info(
                 $"[{LoggerHead}]->Let's Go...");
-
-            startTimer();
+            GCommon.Logger.Info(
+                $"[{LoggerHead}]->程序版本标识:{Version}");
+            StartTimer();
         }
 
         /// <summary>
@@ -353,7 +367,7 @@ namespace AKStreamWeb
                     DbType = "请配置正确的数据库类型如 MySql、Sqlite等",
                     WebApiPort = 5800,
                     HttpClientTimeoutSec = 20,
-                    AccessKey = UtilsHelper.generalGuid(),
+                    AccessKey = UtilsHelper.GeneralGuid(),
                     DeletedRecordsExpiredDays = 0,
                     EnableGB28181Client = false
                 };

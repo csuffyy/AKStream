@@ -15,6 +15,7 @@ namespace LibCommon.Structs.WebRequest
         private string _ipV6Address;
         private ushort _keeperWebApiPort;
         private string _mediaServerId;
+        private string? _candidate;
         private bool _mediaServerIsRunning = false;
         private int _mediaServerPid;
         private PerformanceInfo? _performanceInfo;
@@ -33,7 +34,10 @@ namespace LibCommon.Structs.WebRequest
         private ushort _zlmRtmpsPort;
         private ushort _zlmRtspPort;
         private ushort _zlmRtspsPort;
-     
+        private int? _recordSec;
+        private DateTime? _zlmBuildDateTime;
+        private Dictionary<string, int>? _disksUseable;
+        private string? _cutMergeFilePath;
 
 
         /// <summary>
@@ -52,6 +56,15 @@ namespace LibCommon.Structs.WebRequest
         {
             get => _ipV6Address;
             set => _ipV6Address = value ?? throw new ArgumentNullException(nameof(value));
+        }
+
+        /// <summary>
+        /// keeper对外服务的ip地址（公网ip地址）
+        /// </summary>
+        public string? Candidate
+        {
+            get => _candidate;
+            set => _candidate = value;
         }
 
         /// <summary>
@@ -226,6 +239,41 @@ namespace LibCommon.Structs.WebRequest
             set => _version = value ?? throw new ArgumentNullException(nameof(value));
         }
 
-       
+        /// <summary>
+        /// 录制文件时长
+        /// </summary>
+        public int? RecordSec
+        {
+            get => _recordSec;
+            set => _recordSec = value;
+        }
+
+        /// <summary>
+        /// ZLM的编译时间
+        /// </summary>
+        public DateTime? ZlmBuildDateTime
+        {
+            get => _zlmBuildDateTime;
+            set => _zlmBuildDateTime = value;
+        }
+
+
+        /// <summary>
+        /// 挂载的磁盘是否可用
+        /// </summary>
+        public Dictionary<string, int>? DisksUseable
+        {
+            get => _disksUseable;
+            set => _disksUseable = value;
+        }
+
+        /// <summary>
+        /// 裁剪合并的文件目录
+        /// </summary>
+        public string? CutMergeFilePath
+        {
+            get => _cutMergeFilePath;
+            set => _cutMergeFilePath = value;
+        }
     }
 }

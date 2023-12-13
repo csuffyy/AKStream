@@ -34,6 +34,7 @@ namespace SIPSorcery.Net
         public const int MAX_IP_OVERHEAD = MIN_IP_OVERHEAD + 64;
         public const int UDP_OVERHEAD = 8;
         public const int DEFAULT_TIMEOUT_MILLISECONDS = 20000;
+
         public const int DTLS_RETRANSMISSION_CODE = -1;
         //public const int DTLS_RECEIVE_ERROR_CODE = -2;
 
@@ -190,6 +191,7 @@ namespace SIPSorcery.Net
                         srtcpDecoder = GenerateRtcpDecoder();
                         srtcpEncoder = GenerateRtcpEncoder();
                     }
+
                     // Declare handshake as complete
                     _handshakeComplete = true;
                     _handshakeFailed = false;
@@ -203,7 +205,8 @@ namespace SIPSorcery.Net
                 {
                     if (excp.InnerException is TimeoutException)
                     {
-                        logger.LogWarning(excp, $"DTLS handshake as client timed out waiting for handshake to complete.");
+                        logger.LogWarning(excp,
+                            $"DTLS handshake as client timed out waiting for handshake to complete.");
                         handshakeError = "timeout";
                     }
                     else
@@ -225,6 +228,7 @@ namespace SIPSorcery.Net
                     //UnityEngine.Debug.Log("DTLS Handshake failed\n" + e);
                 }
             }
+
             return false;
         }
 
@@ -257,6 +261,7 @@ namespace SIPSorcery.Net
                         srtcpDecoder = GenerateRtcpDecoder();
                         srtcpEncoder = GenerateRtcpEncoder();
                     }
+
                     // Declare handshake as complete
                     _handshakeComplete = true;
                     _handshakeFailed = false;
@@ -269,7 +274,8 @@ namespace SIPSorcery.Net
                 {
                     if (excp.InnerException is TimeoutException)
                     {
-                        logger.LogWarning(excp, $"DTLS handshake as server timed out waiting for handshake to complete.");
+                        logger.LogWarning(excp,
+                            $"DTLS handshake as server timed out waiting for handshake to complete.");
                         handshakeError = "timeout";
                     }
                     else
@@ -291,6 +297,7 @@ namespace SIPSorcery.Net
                     //UnityEngine.Debug.Log("DTLS Handshake failed\n"+ e);
                 }
             }
+
             return false;
         }
 
@@ -357,11 +364,13 @@ namespace SIPSorcery.Net
             SrtpTransformEngine engine = null;
             if (!isClient)
             {
-                engine = new SrtpTransformEngine(GetMasterServerKey(), GetMasterServerSalt(), GetSrtpPolicy(), GetSrtcpPolicy());
+                engine = new SrtpTransformEngine(GetMasterServerKey(), GetMasterServerSalt(), GetSrtpPolicy(),
+                    GetSrtcpPolicy());
             }
             else
             {
-                engine = new SrtpTransformEngine(GetMasterClientKey(), GetMasterClientSalt(), GetSrtpPolicy(), GetSrtcpPolicy());
+                engine = new SrtpTransformEngine(GetMasterClientKey(), GetMasterClientSalt(), GetSrtpPolicy(),
+                    GetSrtcpPolicy());
             }
 
             if (isRtp)
@@ -498,7 +507,7 @@ namespace SIPSorcery.Net
         {
             try
             {
-                if(_isClosed)
+                if (_isClosed)
                 {
                     throw new SocketException((int)SocketError.NotConnected);
                     //return DTLS_RECEIVE_ERROR_CODE;
@@ -531,7 +540,8 @@ namespace SIPSorcery.Net
 
                 if (millisecondsRemaining <= 0)
                 {
-                    logger.LogWarning($"DTLS transport timed out after {TimeoutMilliseconds}ms waiting for handshake from remote {(connection.IsClient() ? "server" : "client")}.");
+                    logger.LogWarning(
+                        $"DTLS transport timed out after {TimeoutMilliseconds}ms waiting for handshake from remote {(connection.IsClient() ? "server" : "client")}.");
                     throw new TimeoutException();
                 }
                 else if (!_isClosed)

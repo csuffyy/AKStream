@@ -130,7 +130,8 @@ namespace SIPSorcery.Net
         {
         }
 
-        public DtlsSrtpServer(X509Certificate2 certificate) : this(DtlsUtils.LoadCertificateChain(certificate), DtlsUtils.LoadPrivateKeyResource(certificate))
+        public DtlsSrtpServer(X509Certificate2 certificate) : this(DtlsUtils.LoadCertificateChain(certificate),
+            DtlsUtils.LoadPrivateKeyResource(certificate))
         {
         }
 
@@ -223,12 +224,13 @@ namespace SIPSorcery.Net
                 int cipherSuite = cipherSuites[i];
 
                 if (Arrays.Contains(this.mOfferedCipherSuites, cipherSuite)
-                        && (eccCipherSuitesEnabled || !TlsEccUtilities.IsEccCipherSuite(cipherSuite))
-                        && TlsUtilities.IsValidCipherSuiteForVersion(cipherSuite, mServerVersion))
+                    && (eccCipherSuitesEnabled || !TlsEccUtilities.IsEccCipherSuite(cipherSuite))
+                    && TlsUtilities.IsValidCipherSuiteForVersion(cipherSuite, mServerVersion))
                 {
                     return this.mSelectedCipherSuite = cipherSuite;
                 }
             }
+
             throw new TlsFatalAlert(AlertDescription.handshake_failure);
         }
 
@@ -238,7 +240,11 @@ namespace SIPSorcery.Net
 
             if (TlsUtilities.IsSignatureAlgorithmsExtensionAllowed(mServerVersion))
             {
-                byte[] hashAlgorithms = new byte[] { HashAlgorithm.sha512, HashAlgorithm.sha384, HashAlgorithm.sha256, HashAlgorithm.sha224, HashAlgorithm.sha1 };
+                byte[] hashAlgorithms = new byte[]
+                {
+                    HashAlgorithm.sha512, HashAlgorithm.sha384, HashAlgorithm.sha256, HashAlgorithm.sha224,
+                    HashAlgorithm.sha1
+                };
                 byte[] signatureAlgorithms = new byte[] { SignatureAlgorithm.rsa, SignatureAlgorithm.ecdsa };
 
                 serverSigAlgs = new List<SignatureAndHashAlgorithm>();
@@ -250,6 +256,7 @@ namespace SIPSorcery.Net
                     }
                 }
             }
+
             return new CertificateRequest(new byte[] { ClientCertificateType.rsa_sign }, serverSigAlgs, null);
         }
 
@@ -267,8 +274,10 @@ namespace SIPSorcery.Net
                 {
                     serverExtensions = new Hashtable();
                 }
+
                 TlsSRTPUtils.AddUseSrtpExtension(serverExtensions, serverSrtpData);
             }
+
             return serverExtensions;
         }
 
@@ -334,7 +343,9 @@ namespace SIPSorcery.Net
         public override void NotifyHandshakeComplete()
         {
             //Copy master Secret (will be inaccessible after this call)
-            masterSecret = new byte[mContext.SecurityParameters.MasterSecret != null ? mContext.SecurityParameters.MasterSecret.Length : 0];
+            masterSecret = new byte[mContext.SecurityParameters.MasterSecret != null
+                ? mContext.SecurityParameters.MasterSecret.Length
+                : 0];
             Buffer.BlockCopy(mContext.SecurityParameters.MasterSecret, 0, masterSecret, 0, masterSecret.Length);
 
             //Prepare Srtp Keys (we must to it here because master key will be cleared after that)
@@ -348,7 +359,8 @@ namespace SIPSorcery.Net
 
         protected override TlsSignerCredentials GetECDsaSignerCredentials()
         {
-            return DtlsUtils.LoadSignerCredentials(mContext, mCertificateChain, mPrivateKey, new SignatureAndHashAlgorithm(HashAlgorithm.sha256, SignatureAlgorithm.ecdsa));
+            return DtlsUtils.LoadSignerCredentials(mContext, mCertificateChain, mPrivateKey,
+                new SignatureAndHashAlgorithm(HashAlgorithm.sha256, SignatureAlgorithm.ecdsa));
         }
 
         protected override TlsEncryptionCredentials GetRsaEncryptionCredentials()
@@ -381,6 +393,7 @@ namespace SIPSorcery.Net
                     return null;
                 }
             }
+
             return DtlsUtils.LoadSignerCredentials(mContext, mCertificateChain, mPrivateKey, signatureAndHashAlgorithm);
         }
 
@@ -389,7 +402,8 @@ namespace SIPSorcery.Net
             //Set master secret back to security parameters (only works in old bouncy castle versions)
             //mContext.SecurityParameters.masterSecret = masterSecret;
 
-            SrtpParameters srtpParams = SrtpParameters.GetSrtpParametersForProfile(serverSrtpData.ProtectionProfiles[0]);
+            SrtpParameters srtpParams =
+                SrtpParameters.GetSrtpParametersForProfile(serverSrtpData.ProtectionProfiles[0]);
             int keyLen = srtpParams.GetCipherKeyLength();
             int saltLen = srtpParams.GetCipherSaltLength();
 
@@ -406,11 +420,11 @@ namespace SIPSorcery.Net
             byte[] sharedSecret = GetKeyingMaterial(2 * (keyLen + saltLen));
 
             /*
-             * 
+             *
              * See: http://tools.ietf.org/html/rfc5764#section-4.2
-             * 
+             *
              * sharedSecret is an equivalent of :
-             * 
+             *
              * struct {
              *     client_write_SRTP_master_key[SRTPSecurityParams.master_key_len];
              *     server_write_SRTP_master_key[SRTPSecurityParams.master_key_len];
@@ -419,14 +433,14 @@ namespace SIPSorcery.Net
              *  } ;
              *
              * Here, client = local configuration, server = remote.
-             * NOTE [ivelin]: 'local' makes sense if this code is used from a DTLS SRTP client. 
-             *                Here we run as a server, so 'local' referring to the client is actually confusing. 
-             * 
+             * NOTE [ivelin]: 'local' makes sense if this code is used from a DTLS SRTP client.
+             *                Here we run as a server, so 'local' referring to the client is actually confusing.
+             *
              * l(k) = KEY length
              * s(k) = salt length
-             * 
+             *
              * So we have the following repartition :
-             *                           l(k)                                 2*l(k)+s(k)   
+             *                           l(k)                                 2*l(k)+s(k)
              *                                                   2*l(k)                       2*(l(k)+s(k))
              * +------------------------+------------------------+---------------+-------------------+
              * + local key           |    remote key    | local salt   | remote salt   |
@@ -505,6 +519,7 @@ namespace SIPSorcery.Net
             {
                 cipherSuites[i] = this.cipherSuites[i];
             }
+
             return cipherSuites;
         }
 
@@ -520,6 +535,7 @@ namespace SIPSorcery.Net
             {
                 description += message;
             }
+
             if (cause != null)
             {
                 description += cause;

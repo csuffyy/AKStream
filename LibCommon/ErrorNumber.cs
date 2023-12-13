@@ -44,6 +44,7 @@ namespace LibCommon
         Sys_DvrCutMergeFileNotFound = -1031, //时间周期内没有找到相关视频文件
         Sys_DvrCutProcessQueueLimit = -1032, //处理队列已满，请稍后再试
         Sys_AutoResetEventExcept = -1033, //AutoResetEventExcept
+        Sys_DB_UserAuthAlreadyExists = -1034, //数据库中指定鉴权记录已经存在
         Sip_StartExcept = -2000, //启动Sip服务异常
         Sip_StopExcept = -2001, //停止Sip服务异常
         Sip_Except_DisposeSipDevice = -2002, //Sip网关内部异常(销毁Sip设备时)
@@ -59,8 +60,8 @@ namespace LibCommon
         Sip_Channel_StatusExcept = -2012, //Sip通道设备状态异常
         Sip_VideoLiveExcept = -2013, //Sip通道推流请求异常
         Sip_CallBackExcept = -2014, //sip回调时异常
-        Sip_SipClient_InitExcept=-2015,//sip客户端启动异常
-        Sip_SipClient_ShareDeviceIdAlRedayExists=-2016,//SIP共享通道设备ID已经存在,ShareDeviceId不能重复
+        Sip_SipClient_InitExcept = -2015, //sip客户端启动异常
+        Sip_SipClient_ShareDeviceIdAlRedayExists = -2016, //SIP共享通道设备ID已经存在,ShareDeviceId不能重复
         MediaServer_WebApiExcept = -3000, //访问流媒体服务器WebApi时异常
         MediaServer_WebApiDataExcept = -3001, //访问流媒体服务器WebApi接口返回数据异常
         MediaServer_TimeExcept = -3002, //服务器时间异常，建议同步
@@ -77,9 +78,11 @@ namespace LibCommon
         MediaServer_StreamTypeExcept = -3013, //流类型不正确
         MediaServer_GetStreamTypeExcept = -3014, //指定拉流方法不正确
         MediaServer_VideoSrcExcept = -3015, //源流地址异常
-        MediaServer_InputObjectAlredayExists=-3016,//传入对象已经存在
-        MediaServer_ObjectNotExists=-3017,//对象不存在
-        
+        MediaServer_InputObjectAlredayExists = -3016, //传入对象已经存在
+        MediaServer_ObjectNotExists = -3017, //对象不存在
+        MediaServer_RecordFileExcept = -3018, //录制文件异常
+        MediaServer_DiskExcept = -3019, //磁盘异常
+
 
         Other = -6000 //其他异常
     }
@@ -165,6 +168,9 @@ namespace LibCommon
             ErrorDic[ErrorNumber.MediaServer_VideoSrcExcept] = "源流地址异常，请检查数据库中VideoSrcUrl字段是否正确";
             ErrorDic[ErrorNumber.MediaServer_InputObjectAlredayExists] = "传入对象已经存在";
             ErrorDic[ErrorNumber.MediaServer_ObjectNotExists] = "指定对象不存在";
+            ErrorDic[ErrorNumber.MediaServer_RecordFileExcept] = "录制文件异常";
+            ErrorDic[ErrorNumber.MediaServer_DiskExcept] = "磁盘异常";
+            ErrorDic[ErrorNumber.Sys_DB_UserAuthAlreadyExists] = "数据库中指定鉴权记录已存在";
             ErrorDic[ErrorNumber.Other] = "未知错误";
         }
     }

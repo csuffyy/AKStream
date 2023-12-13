@@ -18,17 +18,21 @@ namespace AKStreamKeeper.Misc
         private int _httpClientTimeoutSec;
         private string _ipV4Address;
         private string _ipV6Address;
+        private string? _candidate;
         private ushort _maxRtpPort = 30000;
         private string _mediaServerPath;
         private ushort _minRtpPort = 10001;
-        private ushort _minSendRtpPort= 20002;
+        private ushort _minSendRtpPort = 20002;
         private ushort _maxSendRtpPort = 20200;
         private bool _randomPort = false;
         private int? _recordSec = 120;
+        private bool? _checkLinuxDiskMount = false;
         private int _rtpPortCDTime;
         private bool _useSSL = false;
         private ushort _webApiPort;
         private string? _zLMediakitSSLFilePath;
+        private string? _listenIP = "127.0.0.1";
+        private bool? _enableRtspAuth = false;
 
 
         /// <summary>
@@ -58,6 +62,7 @@ namespace AKStreamKeeper.Misc
             set => _webApiPort = value;
         }
 
+
         /// <summary>
         /// 流媒体服务器路径
         /// </summary>
@@ -65,6 +70,16 @@ namespace AKStreamKeeper.Misc
         {
             get => _mediaServerPath;
             set => _mediaServerPath = value;
+        }
+
+
+        /// <summary>
+        /// keeper对外服务的ip地址（公网ip地址）
+        /// </summary>
+        public string? Candidate
+        {
+            get => _candidate;
+            set => _candidate = value;
         }
 
         /// <summary>
@@ -210,6 +225,33 @@ namespace AKStreamKeeper.Misc
         {
             get => _maxSendRtpPort;
             set => _maxSendRtpPort = value;
+        }
+
+        /// <summary>
+        /// linux下是否检查存储盘挂载情况
+        /// </summary>
+        public bool? CheckLinuxDiskMount
+        {
+            get => _checkLinuxDiskMount;
+            set => _checkLinuxDiskMount = value;
+        }
+
+        /// <summary>
+        /// 监听ip地址
+        /// </summary>
+        public string ListenIp
+        {
+            get => _listenIP;
+            set => _listenIP = value;
+        }
+
+        /// <summary>
+        /// 是否开启rtsp鉴权
+        /// </summary>
+        public bool? EnableRtspAuth
+        {
+            get => _enableRtspAuth;
+            set => _enableRtspAuth = value;
         }
     }
 }

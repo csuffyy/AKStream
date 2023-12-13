@@ -30,7 +30,7 @@ namespace SIPSorcery.Net
     /// </remarks>
     public enum DataChannelPayloadProtocols : uint
     {
-        WebRTC_DCEP = 50,           // Data Channel Establishment Protocol (DCEP).
+        WebRTC_DCEP = 50, // Data Channel Establishment Protocol (DCEP).
         WebRTC_String = 51,
         WebRTC_Binary_Partial = 52, // Deprecated.
         WebRTC_Binary = 53,
@@ -78,8 +78,10 @@ namespace SIPSorcery.Net
         private RTCSctpTransport _transport;
 
         public event Action onopen;
+
         //public event Action onbufferedamountlow;
         public event Action<string> onerror;
+
         //public event Action onclosing;
         public event Action onclose;
         public event OnDataChannelMessageDelegate onmessage;
@@ -123,12 +125,14 @@ namespace SIPSorcery.Net
         {
             if (message != null & Encoding.UTF8.GetByteCount(message) > _transport.maxMessageSize)
             {
-                throw new ApplicationException($"Data channel {label} was requested to send data of length {Encoding.UTF8.GetByteCount(message)} " +
+                throw new ApplicationException(
+                    $"Data channel {label} was requested to send data of length {Encoding.UTF8.GetByteCount(message)} " +
                     $" that exceeded the maximum allowed message size of {_transport.maxMessageSize}.");
             }
             else if (_transport.state != RTCSctpTransportState.Connected)
             {
-                logger.LogWarning($"WebRTC data channel send failed due to SCTP transport in state {_transport.state}.");
+                logger.LogWarning(
+                    $"WebRTC data channel send failed due to SCTP transport in state {_transport.state}.");
             }
             else
             {
@@ -158,12 +162,14 @@ namespace SIPSorcery.Net
         {
             if (data.Length > _transport.maxMessageSize)
             {
-                throw new ApplicationException($"Data channel {label} was requested to send data of length {data.Length} " +
+                throw new ApplicationException(
+                    $"Data channel {label} was requested to send data of length {data.Length} " +
                     $" that exceeded the maximum allowed message size of {_transport.maxMessageSize}.");
             }
             else if (_transport.state != RTCSctpTransportState.Connected)
             {
-                logger.LogWarning($"WebRTC data channel send failed due to SCTP transport in state {_transport.state}.");
+                logger.LogWarning(
+                    $"WebRTC data channel send failed due to SCTP transport in state {_transport.state}.");
             }
             else
             {
@@ -179,7 +185,7 @@ namespace SIPSorcery.Net
                     {
                         _transport.RTCSctpAssociation.SendData(id.GetValueOrDefault(),
                             (uint)DataChannelPayloadProtocols.WebRTC_Binary,
-                           data);
+                            data);
                     }
                 }
             }
@@ -201,8 +207,8 @@ namespace SIPSorcery.Net
             lock (this)
             {
                 _transport.RTCSctpAssociation.SendData(id.GetValueOrDefault(),
-                       (uint)DataChannelPayloadProtocols.WebRTC_DCEP,
-                       dcepOpen.GetBytes());
+                    (uint)DataChannelPayloadProtocols.WebRTC_DCEP,
+                    dcepOpen.GetBytes());
             }
         }
 
@@ -215,8 +221,8 @@ namespace SIPSorcery.Net
             lock (this)
             {
                 _transport.RTCSctpAssociation.SendData(id.GetValueOrDefault(),
-                       (uint)DataChannelPayloadProtocols.WebRTC_DCEP,
-                       new byte[] { (byte)DataChannelMessageTypes.ACK });
+                    (uint)DataChannelPayloadProtocols.WebRTC_DCEP,
+                    new byte[] { (byte)DataChannelMessageTypes.ACK });
             }
         }
 

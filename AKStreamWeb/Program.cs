@@ -1,5 +1,4 @@
 using LibCommon;
-using LibLogger;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
 
@@ -9,7 +8,7 @@ namespace AKStreamWeb
     {
         public static void Main(string[] args)
         {
-            var tmpRet=  UtilsHelper.GetMainParams(args);
+            var tmpRet = UtilsHelper.GetMainParams(args);
             if (tmpRet != null && tmpRet.Count > 0)
             {
                 foreach (var tmp in tmpRet)
@@ -18,6 +17,7 @@ namespace AKStreamWeb
                     {
                         GCommon.OutConfigPath = tmp.Value;
                     }
+
                     if (tmp.Key.ToUpper().Equals("-L"))
                     {
                         GCommon.OutLogPath = tmp.Value;
@@ -29,11 +29,10 @@ namespace AKStreamWeb
             {
                 if (!GCommon.OutLogPath.Trim().EndsWith('/'))
                 {
-                    GCommon.OutLogPath +=  "/";
+                    GCommon.OutLogPath += "/";
                 }
-              
             }
-         
+
             GCommon.InitLogger();
             Common.Init();
             CreateHostBuilder(args).Build().Run();
@@ -43,7 +42,15 @@ namespace AKStreamWeb
             Host.CreateDefaultBuilder(args)
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
-                    webBuilder.UseStartup<Startup>().UseUrls($"http://*:{Common.AkStreamWebConfig.WebApiPort}");
+                    if (string.IsNullOrEmpty(Common.AkStreamWebConfig.ListenIp))
+                    {
+                        webBuilder.UseStartup<Startup>().UseUrls($"http://*:{Common.AkStreamWebConfig.WebApiPort}");
+                    }
+                    else
+                    {
+                        var url = $"http://{Common.AkStreamWebConfig.ListenIp}:{Common.AkStreamWebConfig.WebApiPort}";
+                        webBuilder.UseStartup<Startup>().UseUrls(url);
+                    }
                 });
     }
 }

@@ -1,5 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
+using LibCommon.Enums;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 
 namespace LibCommon.Structs.GB28181
 {
@@ -23,6 +27,10 @@ namespace LibCommon.Structs.GB28181
         private string? _sipPassword;
         private ushort _sipPort;
         private string? _sipUsername;
+        private EncodingType _encodingType;
+        private Encoding _encoding;
+        private bool? _isPassive = true;
+        private string? _listenIp = "127.0.0.1";
 
 
         /// <summary>
@@ -150,6 +158,67 @@ namespace LibCommon.Structs.GB28181
         {
             get => _noAuthenticationRequireds;
             set => _noAuthenticationRequireds = value;
+        }
+
+        /// <summary>
+        /// 字符集类型
+        /// UTF8
+        /// GBK
+        /// GB2312
+        /// </summary>
+        [JsonConverter(typeof(StringEnumConverter))]
+        public EncodingType EncodingType
+        {
+            get => _encodingType;
+            set => _encodingType = value;
+        }
+
+        /// <summary>
+        /// 是否采用被动模式（被动模式：由被请求方主动发送流到zlm,主动模式：由请求方主动拉取被请求方的流）
+        /// </summary>
+        public bool? IsPassive
+        {
+            get => _isPassive;
+            set => _isPassive = value;
+        }
+
+        /// <summary>
+        /// 执行的字符集
+        /// </summary>
+        /// <exception cref="ArgumentNullException"></exception>
+        [JsonIgnore]
+        public Encoding Encoding
+        {
+            get
+            {
+                Encoding _en = null;
+                switch (_encodingType)
+                {
+                    case EncodingType.GB2312:
+                        _en = Encoding.GetEncoding("gb2312");
+                        break;
+                    case EncodingType.UTF8:
+                        _en = Encoding.GetEncoding("utf-8");
+                        break;
+                    case EncodingType.GBK:
+                        _en = Encoding.GetEncoding("GBK");
+                        break;
+                    default:
+                        _en = Encoding.GetEncoding("utf-8");
+                        break;
+                }
+
+                return _en;
+            }
+        }
+
+        /// <summary>
+        /// 监听ip地址
+        /// </summary>
+        public string ListenIp
+        {
+            get => _listenIp;
+            set => _listenIp = value;
         }
     }
 }

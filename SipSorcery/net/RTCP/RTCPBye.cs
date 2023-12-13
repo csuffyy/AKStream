@@ -39,7 +39,7 @@ namespace SIPSorcery.Net
     public class RTCPBye
     {
         public const int MAX_REASON_BYTES = 255;
-        public const int SSRC_SIZE = 4;       // 4 bytes for the SSRC.
+        public const int SSRC_SIZE = 4; // 4 bytes for the SSRC.
         public const int MIN_PACKET_SIZE = RTCPHeader.HEADER_BYTES_LENGTH + SSRC_SIZE;
 
         public RTCPHeader Header;
@@ -77,7 +77,8 @@ namespace SIPSorcery.Net
         {
             if (packet.Length < MIN_PACKET_SIZE)
             {
-                throw new ApplicationException("The packet did not contain the minimum number of bytes for an RTCP Goodbye packet.");
+                throw new ApplicationException(
+                    "The packet did not contain the minimum number of bytes for an RTCP Goodbye packet.");
             }
 
             Header = new RTCPHeader(packet);

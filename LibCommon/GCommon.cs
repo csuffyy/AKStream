@@ -28,6 +28,7 @@ namespace LibCommon
         public static string ConfigPath = BaseStartPath + "/Config/";
         public static string TmpPicsPath = BaseStartPath + "/.tmppics/"; //用于截图缓存
         private static Logger _logger = null;
+       
 
         public static Logger Logger
         {
@@ -64,14 +65,16 @@ namespace LibCommon
 
             _logger = new Logger();
         }
+
         static GCommon()
         {
             if (!string.IsNullOrEmpty(OutLogPath))
             {
                 if (!OutLogPath.Trim().EndsWith('/'))
                 {
-                    OutLogPath +=  "/";
+                    OutLogPath += "/";
                 }
+
                 Logger.logxmlPath = OutLogPath;
             }
 
@@ -174,7 +177,7 @@ namespace LibCommon
         /// </summary>
         /// <param name="sipDeviceId"></param>
         public delegate string DeviceAuthentication(string sipDeviceId);
-        
+
         /// <summary>
         /// Sip客户端收到Sip服务端的消息时
         /// </summary>
@@ -183,11 +186,13 @@ namespace LibCommon
         /// <summary>
         /// 当有实时流推流请求时
         /// </summary>
-        public delegate bool InviteChannel(ShareInviteInfo info,out ResponseStruct rs);
+        public delegate bool InviteChannel(ShareInviteInfo info, out ResponseStruct rs);
+
         /// <summary>
         /// 当有实时流结束推流请求时
         /// </summary>
-        public delegate bool DeInviteChannel(string fromTag,string toTag,string callid,out ResponseStruct rs,out ShareInviteInfo info);
+        public delegate bool DeInviteChannel(string fromTag, string toTag, string callid, out ResponseStruct rs,
+            out ShareInviteInfo info);
 
         #endregion
     }

@@ -11,7 +11,6 @@ using LibCommon.Structs.GB28181.Net.SDP;
 using LibCommon.Structs.GB28181.Net.SIP;
 using LibCommon.Structs.GB28181.Sys;
 using LibCommon.Structs.GB28181.XML;
-using LibLogger;
 using SIPSorcery.SIP;
 
 namespace LibGB28181SipServer
@@ -46,7 +45,7 @@ namespace LibGB28181SipServer
         /// </summary>
         private SIPUDPChannel _sipUdpIpV6Channel = null!;
 
-        public SipServer(string outConfigPath="")
+        public SipServer(string outConfigPath = "")
         {
             ResponseStruct rs;
             GCommon.Logger.Info($"[{Common.LoggerHead}]->加载配置文件->{Common.SipServerConfigPath}");
@@ -54,6 +53,9 @@ namespace LibGB28181SipServer
             {
                 Common.SipServerConfigPath = outConfigPath + "SipServerConfig.json";
             }
+
+            Common.SipServerConfigPath = UtilsHelper.FindPreferredConfigFile(Common.SipServerConfigPath); //查找优先使用的配置文件
+
             var ret = Common.ReadSipServerConfig(out rs);
 
             if (ret < 0 || !rs.Code.Equals(ErrorNumber.None))
@@ -109,15 +111,14 @@ namespace LibGB28181SipServer
 
                 SIPFromHeader from = new SIPFromHeader(null, fromSipUri, "AKStream");
 
-            
+
                 SIPRequest req = SIPRequest.GetRequest(method, toSipUri, to,
                     from,
                     new SIPEndPoint(sipDevice.SipChannelLayout.SIPProtocol,
                         new IPEndPoint(
-                         
-                                 IPAddress.Parse(Common.SipServerConfig.SipIpAddress),
+                            IPAddress.Parse(Common.SipServerConfig.SipIpAddress),
                             sipDevice.SipChannelLayout.Port)));
-                
+
 
                 req.Header.Allow = null;
 
@@ -210,12 +211,11 @@ namespace LibGB28181SipServer
                 var fromSipUri = new SIPURI(SIPSchemesEnum.sip, sipServerIpAddress, Common.SipServerConfig.SipPort);
                 fromSipUri.User = Common.SipServerConfig.ServerSipDeviceId;
                 SIPFromHeader from = new SIPFromHeader(null, fromSipUri, "AKStream");
-              
+
                 SIPRequest req = SIPRequest.GetRequest(method, toSipUri, to,
                     from,
                     new SIPEndPoint(sipDevice.SipChannelLayout.SIPProtocol,
                         new IPEndPoint(
-                         
                             IPAddress.Parse(Common.SipServerConfig.SipIpAddress),
                             sipDevice.SipChannelLayout.Port)));
 
@@ -249,7 +249,7 @@ namespace LibGB28181SipServer
 
                 sipDevice.LastSipRequest = req;
                 GCommon.Logger.Debug($"[{Common.LoggerHead}]->发送Sip请求->{req}");
-             
+
                 await _sipTransport.SendRequestAsync(sipDevice.RemoteEndPoint, req);
             }
             catch (Exception ex)
@@ -288,12 +288,11 @@ namespace LibGB28181SipServer
 
                 SIPFromHeader from = new SIPFromHeader(null, fromSipUri, "AKStream");
 
-            
+
                 SIPRequest req = SIPRequest.GetRequest(method, toSipUri, to,
                     from,
                     new SIPEndPoint(sipDevice.SipChannelLayout.SIPProtocol,
                         new IPEndPoint(
-                         
                             IPAddress.Parse(Common.SipServerConfig.SipIpAddress),
                             sipDevice.SipChannelLayout.Port)));
 
@@ -492,10 +491,18 @@ namespace LibGB28181SipServer
                 media.MediaFormats.Add(psFormat);
                 media.MediaFormats.Add(h264Format);
                 media.AddExtra("a=recvonly");
+                if (Common.SipServerConfig.IsPassive != null && Common.SipServerConfig.IsPassive == false)
+                {
+                    media.AddExtra("a=setup:active"); //active：主动模式，由摄像头告知服务器监听哪个端口，passive：被动模式，服务器告知摄像头连接端口
+                }
+                else
+                {
+                    media.AddExtra("a=setup:passive"); //active：主动模式，由摄像头告知服务器监听哪个端口，passive：被动模式，服务器告知摄像头连接端口
+                }
+
                 if (pushMediaInfo.PushStreamSocketType == PushStreamSocketType.TCP)
                 {
                     media.Transport = "TCP/RTP/AVP";
-                    media.AddExtra("a=setup:passive"); //active：主动模式，由摄像头告知服务器监听哪个端口，passive：被动模式，服务器告知摄像头连接端口
                     media.AddExtra("a=connection:new");
                 }
 
@@ -549,10 +556,19 @@ namespace LibGB28181SipServer
                 media.MediaFormats.Add(psFormat);
                 media.MediaFormats.Add(h264Format);
                 media.AddExtra("a=recvonly");
+
+                if (Common.SipServerConfig.IsPassive != null && Common.SipServerConfig.IsPassive == false)
+                {
+                    media.AddExtra("a=setup:active"); //active：主动模式，由摄像头告知服务器监听哪个端口，passive：被动模式，服务器告知摄像头连接端口
+                }
+                else
+                {
+                    media.AddExtra("a=setup:passive"); //active：主动模式，由摄像头告知服务器监听哪个端口，passive：被动模式，服务器告知摄像头连接端口
+                }
+
                 if (pushMediaInfo.PushStreamSocketType == PushStreamSocketType.TCP)
                 {
                     media.Transport = "TCP/RTP/AVP";
-                    media.AddExtra("a=setup:passive"); //active：主动模式，由摄像头告知服务器监听哪个端口，passive：被动模式，服务器告知摄像头连接端口
                     media.AddExtra("a=connection:new");
                 }
 
@@ -973,7 +989,8 @@ namespace LibGB28181SipServer
                         Task>
                     request =
                         SendRequestViaSipChannel;
-                request(tmpSipDevice, sipChannel, method, ConstString.Application_SDP, xmlBody, subject, body.CmdType,
+                request(tmpSipDevice, sipChannel, method, ConstString.Application_MANSCDP, xmlBody, subject,
+                    body.CmdType,
                     true,
                     evnt, evnt2, sipQueryRecordFile,
                     timeout);
@@ -1218,7 +1235,8 @@ namespace LibGB28181SipServer
                                 ExceptMessage = exex.Message,
                                 ExceptStackTrace = exex.StackTrace
                             };
-                            GCommon.Logger.Warn($"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
+                            GCommon.Logger.Warn(
+                                $"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
                         }
                     }
                 }
@@ -1310,7 +1328,8 @@ namespace LibGB28181SipServer
                                 ExceptMessage = exex.Message,
                                 ExceptStackTrace = exex.StackTrace
                             };
-                            GCommon.Logger.Warn($"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
+                            GCommon.Logger.Warn(
+                                $"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
                         }
                     }
                 }
@@ -1384,8 +1403,16 @@ namespace LibGB28181SipServer
                 if (!string.IsNullOrEmpty(mediaSdp))
                 {
                     SIPMethodsEnum method = SIPMethodsEnum.INVITE;
+                    var tmpId = UtilsHelper.CreateGUID();
+                    var tmpIntId = CRC32Helper.GetCRC32(tmpId);
+                    tmpId = tmpIntId.ToString();
+                    if (!tmpId.StartsWith('0'))
+                    {
+                        tmpId = "0" + tmpId;
+                    }
+
                     var subject =
-                        $"{sipChannel.DeviceId}:{0},{Common.SipServerConfig.ServerSipDeviceId}:{new Random().Next(100, ushort.MaxValue)}";
+                        $"{sipChannel.DeviceId}:{tmpId},{Common.SipServerConfig.ServerSipDeviceId}:{new Random().Next(100, ushort.MaxValue)}";
                     try
                     {
                         Func<SipDevice, SipChannel, SIPMethodsEnum, string, string, string, CommandType, bool,
@@ -1412,7 +1439,8 @@ namespace LibGB28181SipServer
                                 ExceptMessage = exex.Message,
                                 ExceptStackTrace = exex.StackTrace
                             };
-                            GCommon.Logger.Warn($"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
+                            GCommon.Logger.Warn(
+                                $"[{Common.LoggerHead}]->AutoResetEvent.Set异常->{JsonHelper.ToJson(exrs)}");
                         }
                     }
                 }
@@ -1492,7 +1520,7 @@ namespace LibGB28181SipServer
 
                 SIPFromHeader from = new SIPFromHeader(null, fromSipUri, "AKStream");
                 var fromUri = tmpSipDevice.LastSipRequest.URI;
-               
+
                 SIPRequest req = SIPRequest.GetRequest(method, toSipUri, to,
                     from);
 
@@ -1629,7 +1657,7 @@ namespace LibGB28181SipServer
                 fromSipUri.User = Common.SipServerConfig.ServerSipDeviceId;
                 SIPFromHeader from = new SIPFromHeader(null, fromSipUri, "AKStream");
                 var fromUri = tmpSipDevice.LastSipRequest.URI;
-             
+
                 req = SIPRequest.GetRequest(method, toSipUri, to,
                     from);
                 req.Header.CallId = sipChannel.InviteSipRequest.Header.CallId;
@@ -1848,16 +1876,38 @@ namespace LibGB28181SipServer
                 GCommon.Logger.Info($"[{Common.LoggerHead}]->启动Sip服务.");
 
                 //创建sip传输层
-                _sipTransport = new SIPTransport();
+                _sipTransport =
+                    new SIPTransport(false, Common.SipServerConfig.Encoding, Common.SipServerConfig.Encoding);
+
+                // _sipTransport = new SIPTransport();
 
                 // 创建ipv4 udp传输层
-                _sipUdpIpV4Channel = new SIPUDPChannel(new IPEndPoint(IPAddress.Any,
-                    Common.SipServerConfig.SipPort));
+                if (string.IsNullOrEmpty(Common.SipServerConfig.ListenIp))
+                {
+                    _sipUdpIpV4Channel = new SIPUDPChannel(new IPEndPoint(IPAddress.Any,
+                        Common.SipServerConfig.SipPort));
+                }
+                else
+                {
+                    _sipUdpIpV4Channel = new SIPUDPChannel(new IPEndPoint(
+                        IPAddress.Parse(Common.SipServerConfig.ListenIp.Trim()),
+                        Common.SipServerConfig.SipPort));
+                }
 
                 if (Common.SipServerConfig.MsgProtocol.Trim().ToUpper().Equals("TCP"))
                 {
-                    _sipTcpIpV4Channel = new SIPTCPChannel(new IPEndPoint(IPAddress.Any,
-                        Common.SipServerConfig.SipPort));
+                    if (string.IsNullOrEmpty(Common.SipServerConfig.ListenIp))
+                    {
+                        _sipTcpIpV4Channel = new SIPTCPChannel(new IPEndPoint(IPAddress.Any,
+                            Common.SipServerConfig.SipPort));
+                    }
+                    else
+                    {
+                        _sipTcpIpV4Channel = new SIPTCPChannel(new IPEndPoint(
+                            IPAddress.Parse(Common.SipServerConfig.ListenIp.Trim()),
+                            Common.SipServerConfig.SipPort));
+                    }
+
                     _sipTransport.AddSIPChannel(_sipTcpIpV4Channel);
                     GCommon.Logger.Info(
                         $"[{Common.LoggerHead}]->监听端口成功,监听情况->{_sipTcpIpV4Channel.ListeningEndPoint.Address}:{_sipTcpIpV4Channel.ListeningEndPoint.Port}(TCP via IPV4)");

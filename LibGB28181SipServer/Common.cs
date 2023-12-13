@@ -15,13 +15,14 @@ namespace LibGB28181SipServer
     public static class Common
     {
         public const int SIP_REGISTER_MIN_INTERVAL_SEC = 30; //最小Sip设备注册间隔
+        public const int SIP_REGISTER_MAX_INTERVAL_SEC = 1800; //最大Sip设备注册间隔
         private static string _loggerHead = "SipServer";
         private static SipServerConfig _sipServerConfig = null!;
         private static string _sipServerConfigPath = GCommon.ConfigPath + "SipServerConfig.json";
         private static List<SipDevice> _sipDevices = new List<SipDevice>();
         private static ConcurrentQueue<Catalog> _tmpCatalogs = new ConcurrentQueue<Catalog>();
         private static ConcurrentQueue<RecordInfoEx> _tmpRecItems = new ConcurrentQueue<RecordInfoEx>();
-        
+
 
         /// <summary>
         /// 用于操作_sipDevices时的锁
@@ -38,7 +39,6 @@ namespace LibGB28181SipServer
 
         static Common()
         {
-            
         }
 
         /// <summary>
@@ -162,15 +162,15 @@ namespace LibGB28181SipServer
                     sipServerConfig.KeepAliveInterval = 5;
                     sipServerConfig.KeepAliveLostNumber = 3;
                     /*SipDeviceID 20位编码规则
-                    *1-2省级 33 浙江省
-                    *3-4市级 02 宁波市
-                    *5-6区级 00 宁波市区
-                    *7-8村级 00 宁波市区
-                    *9-10行业 02 社会治安内部接入
-                    *11-13设备类型 118 NVR
-                    *14 网络类型 0 监控专用网
-                    *15-20 设备序号 000001 1号设备 
-                    */
+                     *1-2省级 33 浙江省
+                     *3-4市级 02 宁波市
+                     *5-6区级 00 宁波市区
+                     *7-8村级 00 宁波市区
+                     *9-10行业 02 社会治安内部接入
+                     *11-13设备类型 118 NVR
+                     *14 网络类型 0 监控专用网
+                     *15-20 设备序号 000001 1号设备
+                     */
                     sipServerConfig.ServerSipDeviceId = "33020000021180000001";
                     if (sipServerConfig.NoAuthenticationRequireds == null)
                     {
@@ -223,23 +223,28 @@ namespace LibGB28181SipServer
             {
                 return SipChannelType.Unknow;
             }
+
             int extId = int.Parse(sipChannelId.Substring(10, 3));
             if (extId == 131 || extId == 132 || extId == 137 || extId == 138 || extId == 139)
             {
                 return SipChannelType.VideoChannel;
             }
+
             if (extId == 135 || extId == 205)
             {
                 return SipChannelType.AlarmChannel;
             }
+
             if (extId == 137)
             {
                 return SipChannelType.AudioChannel;
             }
+
             if (extId >= 140 && extId <= 199)
             {
                 return SipChannelType.VideoChannel;
             }
+
             return SipChannelType.OtherChannel;
         }
 

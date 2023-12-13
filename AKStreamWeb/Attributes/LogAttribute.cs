@@ -1,7 +1,6 @@
 using System;
 using System.Net;
 using LibCommon;
-using LibLogger;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
@@ -22,13 +21,13 @@ namespace AKStreamWeb.Attributes
             string remoteIpAddr = context.HttpContext.Connection.RemoteIpAddress.ToString();
             try
             {
-                if (context.HttpContext.Response.StatusCode == (int) HttpStatusCode.OK)
+                if (context.HttpContext.Response.StatusCode == (int)HttpStatusCode.OK)
                 {
                     if (!context.HttpContext.Request.Path.Equals("/WebHook/MediaServerRegister"))
                     {
                         info =
                             $@"{info}->Body: {JsonHelper.ToJson(((context.Result as ObjectResult)!).Value)}";
-                         GCommon.Logger.Debug(
+                        GCommon.Logger.Debug(
                             $@"[{Common.LoggerHead}]->HTTP-OUTPUT->{remoteIpAddr}->{context.HttpContext.Request.Method}->{context.HttpContext.Request.Path}->" +
                             info);
                     }
@@ -36,7 +35,7 @@ namespace AKStreamWeb.Attributes
             }
             catch (Exception ex)
             {
-                 GCommon.Logger.Error(
+                GCommon.Logger.Error(
                     $@"[{Common.LoggerHead}]->HTTP-OUTPUT->{remoteIpAddr}->{context.HttpContext.Request.Method}->{context.HttpContext.Request.Path}->" +
                     info + "->" + ex.Message + "->" + ex.StackTrace);
             }
@@ -55,7 +54,7 @@ namespace AKStreamWeb.Attributes
                 {
                     if (!context.HttpContext.Request.Path.Equals("/WebHook/MediaServerRegister"))
                     {
-                         GCommon.Logger.Debug(
+                        GCommon.Logger.Debug(
                             $@"[{Common.LoggerHead}]->HTTP-INPUT->{remoteIpAddr}->{context.HttpContext.Request.Method}->{context.HttpContext.Request.Path}->" +
                             $@"{JsonHelper.ToJson(context.ActionArguments)}");
                     }
@@ -64,7 +63,7 @@ namespace AKStreamWeb.Attributes
                 {
                     if (!context.HttpContext.Request.Path.Equals("/WebHook/MediaServerRegister"))
                     {
-                         GCommon.Logger.Debug(
+                        GCommon.Logger.Debug(
                             $@"[{Common.LoggerHead}]->HTTP-INPUT->{remoteIpAddr}->{context.HttpContext.Request.Method}->{context.HttpContext.Request.Path} -> " +
                             $@"{JsonHelper.ToJson(context.ActionArguments)}");
                     }
@@ -72,7 +71,7 @@ namespace AKStreamWeb.Attributes
             }
             catch (Exception ex)
             {
-                 GCommon.Logger.Error(
+                GCommon.Logger.Error(
                     $@"[{Common.LoggerHead}]->HTTP-INPUT->{remoteIpAddr}->{context.HttpContext.Request.Method}->{context.HttpContext.Request.Path}->" +
                     remoteIpAddr + "->" + ex.Message + "->" + ex.StackTrace);
             }

@@ -11,6 +11,10 @@
 *.zip
 *.tar.gz
 *.swp
+*.vsidx
+*.v2
+read.lock
+*.suo
 ._*
 .Spotlight-V100
 .Trashes
@@ -20,3 +24,6 @@ ehthumbs.db
 Thumbs.db
 .DS_Store
 */.DS_Store
+.vscode/**
+.vs/**
+*.csproj.user

@@ -20,9 +20,9 @@ namespace SIPSorcery.Net
 {
     public class RTPEvent
     {
-        public const int DTMF_PACKET_LENGTH = 4;   // The length of an RTP DTMF event packet.
+        public const int DTMF_PACKET_LENGTH = 4; // The length of an RTP DTMF event packet.
         public const ushort DEFAULT_VOLUME = 10;
-        public const int DUPLICATE_COUNT = 3;       // The number of packets to duplicate for the start and end of an event.
+        public const int DUPLICATE_COUNT = 3; // The number of packets to duplicate for the start and end of an event.
 
         /// <summary>
         /// The ID for the event. For a DTMF tone this is the digit/letter to represent.
@@ -103,7 +103,8 @@ namespace SIPSorcery.Net
         {
             if (packet.Length < DTMF_PACKET_LENGTH)
             {
-                throw new ApplicationException("The packet did not contain the minimum number of bytes for an RTP Event packet.");
+                throw new ApplicationException(
+                    "The packet did not contain the minimum number of bytes for an RTP Event packet.");
             }
 
             EventID = packet[0];

@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Text;
 using System.Threading;
 using LibCommon;
 using LibCommon.Enums;
@@ -23,7 +22,7 @@ namespace LibGB28181SipClient
             set => _sipClient = value;
         }
 
-   
+
         public static string SipClientConfigPath
         {
             get => _sipClientConfigPath;
@@ -31,6 +30,7 @@ namespace LibGB28181SipClient
         }
 
         public static string LoggerHead = "SipClient";
+
         public static SipClientConfig SipClientConfig
         {
             get => _sipClientConfig;
@@ -67,7 +67,7 @@ namespace LibGB28181SipClient
                     i++;
                     Thread.Sleep(50);
                 }
-                
+
                 if (sys != null && sys.NetWorkStat != null)
                 {
                     macAddr = sys.NetWorkStat.Mac;
@@ -92,15 +92,15 @@ namespace LibGB28181SipClient
                     sipClientConfig.SipDeviceId = "33020000021190000002";
                     sipClientConfig.SipServerDeviceId = "33020000021180000001";
                     /*SipDeviceID 20位编码规则
-                       *1-2省级 33 浙江省
-                       *3-4市级 02 宁波市
-                       *5-6区级 00 宁波市区
-                       *7-8村级 00 宁波市区
-                       *9-10行业 02 社会治安内部接入
-                       *11-13设备类型 118 NVR
-                       *14 网络类型 0 监控专用网
-                       *15-20 设备序号 000001 1号设备 
-                       */
+                     *1-2省级 33 浙江省
+                     *3-4市级 02 宁波市
+                     *5-6区级 00 宁波市区
+                     *7-8村级 00 宁波市区
+                     *9-10行业 02 社会治安内部接入
+                     *11-13设备类型 118 NVR
+                     *14 网络类型 0 监控专用网
+                     *15-20 设备序号 000001 1号设备
+                     */
                     sipClientConfig.Realm = sipClientConfig.SipDeviceId.Substring(0, 10);
                     sipClientConfig.LocalPort = 5061;
                     sipClientConfig.SipPassword = "123#@!qwe";
@@ -109,13 +109,12 @@ namespace LibGB28181SipClient
                     sipClientConfig.SipServerPort = 5060;
                     sipClientConfig.KeepAliveLostNumber = 3;
                     sipClientConfig.SipServerIpAddress = "Sip服务器的ip地址";
-                    sipClientConfig.Expiry = 3600;//注册有效期 3600秒
+                    sipClientConfig.Expiry = 3600; //注册有效期 3600秒
                     sipClientConfig.EncodingType = EncodingType.UTF8;
-                    sipClientConfig.Encoding=Encoding.UTF8;
+                    //sipClientConfig.Encoding=Encoding.UTF8;
                     sipClientConfig.AkstreamWebHttpUrl = "http://127.0.0.1:5800/SipClient";
                     return sipClientConfig;
                 }
-
             }
             catch (Exception ex)
             {
@@ -125,8 +124,9 @@ namespace LibGB28181SipClient
                     Message = ErrorMessage.ErrorDic![ErrorNumber.Sip_SipClient_InitExcept],
                     ExceptMessage = ex.Message,
                     ExceptStackTrace = ex.StackTrace,
-                };  
+                };
             }
+
             rs = new ResponseStruct()
             {
                 Code = ErrorNumber.Other,
@@ -145,7 +145,7 @@ namespace LibGB28181SipClient
         {
             if (!File.Exists(_sipClientConfigPath))
             {
-                var config =InitSipClientConfig(out rs);
+                var config = InitSipClientConfig(out rs);
                 if (config != null && rs.Code.Equals(ErrorNumber.None))
                 {
                     _sipClientConfig = config;
@@ -175,6 +175,7 @@ namespace LibGB28181SipClient
                         (UtilsHelper.ReadJsonConfig<SipClientConfig>(_sipClientConfigPath) as SipClientConfig)!;
                     if (_sipClientConfig != null)
                     {
+                        /*
                         switch (_sipClientConfig.EncodingType)
                         {
                            case EncodingType.UTF8:
@@ -189,7 +190,7 @@ namespace LibGB28181SipClient
                            default:
                                _sipClientConfig.Encoding=Encoding.UTF8;
                                break;
-                        }
+                        }*/
                         rs = new ResponseStruct()
                         {
                             Code = ErrorNumber.None,

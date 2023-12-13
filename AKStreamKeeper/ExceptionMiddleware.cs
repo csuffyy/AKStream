@@ -1,7 +1,6 @@
 using System;
 using System.Threading.Tasks;
 using LibCommon;
-using LibLogger;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Newtonsoft.Json;
@@ -47,7 +46,7 @@ namespace AKStreamKeeper
             string info = $@"StatusCode:{context.Response.StatusCode}";
             string remoteIpAddr = context.Connection.RemoteIpAddress.ToString();
             info = $@"{info}->Body: {error}";
-             GCommon.Logger.Error(
+            GCommon.Logger.Error(
                 $@"[{Common.LoggerHead}]->HTTP-OUTPUT->{remoteIpAddr}->{context.Request.Method}->{context.Request.Path}->" +
                 info);
 
@@ -61,7 +60,7 @@ namespace AKStreamKeeper
             string error = "";
             if (environment.IsDevelopment())
             {
-                var json = new {message = e.Message};
+                var json = new { message = e.Message };
                 error = JsonConvert.SerializeObject(json);
             }
             else error = "抱歉，出错了\r\n" + e.Message + "\r\n" + e.StackTrace;
@@ -69,7 +68,7 @@ namespace AKStreamKeeper
             string info = $@"StatusCode:{context.Response.StatusCode}";
             string remoteIpAddr = context.Connection.RemoteIpAddress.ToString();
             info = $@"{info}  Body: {error}";
-             GCommon.Logger.Error(
+            GCommon.Logger.Error(
                 $@"[{Common.LoggerHead}]->HTTP-OUTPUT->{remoteIpAddr}->{context.Request.Method}->{context.Request.Path}->" +
                 info);
             await context.Response.WriteAsync(error);

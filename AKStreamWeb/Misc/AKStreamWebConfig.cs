@@ -17,7 +17,13 @@ namespace AKStreamWeb.Misc
         private bool _enableGB28181Client = false;
         private bool? _enableGB28181Server = false;
         private string? _ZlmFlvPrefix = "live";
-        
+        private string? _listenIP = "127.0.0.1";
+        private bool _localizationKingBaseDB = false;
+        private bool _forwardUnmanagedRtmpRtspRtcStream = true;
+        private string? _forwardUrlIn = "";
+        private string? _forwardUrlOut = "";
+        private string? _forwardUrlOnRecord = "";
+
 
         /// <summary>
         /// 流媒体服务器首次注册是否要求其重新mediaserver
@@ -127,6 +133,60 @@ namespace AKStreamWeb.Misc
         {
             get => _ZlmFlvPrefix;
             set => _ZlmFlvPrefix = value;
+        }
+
+        /// <summary>
+        /// 监听ip地址
+        /// </summary>
+        public string ListenIp
+        {
+            get => _listenIP;
+            set => _listenIP = value;
+        }
+
+
+        /// <summary>
+        /// 是否使用国产化的Kingbase数据库（人大金仓）
+        /// </summary>
+        public bool LocalizationKingBaseDb
+        {
+            get => _localizationKingBaseDB;
+            set => _localizationKingBaseDB = value;
+        }
+
+        /// <summary>
+        /// 是否向外部转发未管理的rtmp流(直播支持)
+        /// </summary>
+        public bool ForwardUnmanagedRtmpRtspRtcStream
+        {
+            get => _forwardUnmanagedRtmpRtspRtcStream;
+            set => _forwardUnmanagedRtmpRtspRtcStream = value;
+        }
+
+        /// <summary>
+        /// 流接入的转发地址
+        /// </summary>
+        public string ForwardUrlIn
+        {
+            get => _forwardUrlIn;
+            set => _forwardUrlIn = value;
+        }
+        /// <summary>
+        /// 流注销的转发地址
+        /// </summary>
+        public string ForwardUrlOut
+        {
+            get => _forwardUrlOut;
+            set => _forwardUrlOut = value;
+        }
+
+        /// <summary>
+        /// 有录制消息的时候的转发
+        /// </summary>
+        public string ForwardUrlOnRecord
+        {
+            get => _forwardUrlOnRecord;
+            set => _forwardUrlOnRecord = value;
         }
     }
 }

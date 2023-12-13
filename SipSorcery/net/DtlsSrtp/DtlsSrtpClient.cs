@@ -27,7 +27,7 @@ using CertificateRequest = Org.BouncyCastle.Crypto.Tls.CertificateRequest;
 namespace SIPSorcery.Net
 {
     internal class DtlsSrtpTlsAuthentication
-            : TlsAuthentication
+        : TlsAuthentication
     {
         private readonly DtlsSrtpClient mClient;
         private readonly TlsContext mContext;
@@ -132,7 +132,8 @@ namespace SIPSorcery.Net
         {
         }
 
-        public DtlsSrtpClient(Certificate certificateChain, AsymmetricKeyParameter privateKey, UseSrtpData clientSrtpData)
+        public DtlsSrtpClient(Certificate certificateChain, AsymmetricKeyParameter privateKey,
+            UseSrtpData clientSrtpData)
         {
             if (certificateChain == null && privateKey == null)
             {
@@ -143,7 +144,8 @@ namespace SIPSorcery.Net
             {
                 SecureRandom random = new SecureRandom();
                 int[] protectionProfiles = { SrtpProtectionProfile.SRTP_AES128_CM_HMAC_SHA1_80 };
-                byte[] mki = new byte[(SrtpParameters.SRTP_AES128_CM_HMAC_SHA1_80.GetCipherKeyLength() + SrtpParameters.SRTP_AES128_CM_HMAC_SHA1_80.GetCipherSaltLength()) / 8];
+                byte[] mki = new byte[(SrtpParameters.SRTP_AES128_CM_HMAC_SHA1_80.GetCipherKeyLength() +
+                                       SrtpParameters.SRTP_AES128_CM_HMAC_SHA1_80.GetCipherSaltLength()) / 8];
                 random.NextBytes(mki); // Reusing our secure random for generating the key.
                 this.clientSrtpData = new UseSrtpData(protectionProfiles, mki);
             }
@@ -161,7 +163,8 @@ namespace SIPSorcery.Net
         }
 
         public DtlsSrtpClient(UseSrtpData clientSrtpData) : this(null, null, clientSrtpData)
-        { }
+        {
+        }
 
         public override IDictionary GetClientExtensions()
         {
@@ -175,6 +178,7 @@ namespace SIPSorcery.Net
 
                 TlsSRTPUtils.AddUseSrtpExtension(clientExtensions, clientSrtpData);
             }
+
             return clientExtensions;
         }
 
@@ -247,7 +251,9 @@ namespace SIPSorcery.Net
             base.NotifyHandshakeComplete();
 
             //Copy master Secret (will be inaccessible after this call)
-            masterSecret = new byte[mContext.SecurityParameters.MasterSecret != null ? mContext.SecurityParameters.MasterSecret.Length : 0];
+            masterSecret = new byte[mContext.SecurityParameters.MasterSecret != null
+                ? mContext.SecurityParameters.MasterSecret.Length
+                : 0];
             Buffer.BlockCopy(mContext.SecurityParameters.MasterSecret, 0, masterSecret, 0, masterSecret.Length);
 
             //Prepare Srtp Keys (we must to it here because master key will be cleared after that)
@@ -324,7 +330,8 @@ namespace SIPSorcery.Net
             //Set master secret back to security parameters (only works in old bouncy castle versions)
             //mContext.SecurityParameters.MasterSecret = masterSecret;
 
-            SrtpParameters srtpParams = SrtpParameters.GetSrtpParametersForProfile(clientSrtpData.ProtectionProfiles[0]);
+            SrtpParameters srtpParams =
+                SrtpParameters.GetSrtpParametersForProfile(clientSrtpData.ProtectionProfiles[0]);
             int keyLen = srtpParams.GetCipherKeyLength();
             int saltLen = srtpParams.GetCipherSaltLength();
 
@@ -341,11 +348,11 @@ namespace SIPSorcery.Net
             byte[] sharedSecret = GetKeyingMaterial(2 * (keyLen + saltLen));
 
             /*
-             * 
+             *
              * See: http://tools.ietf.org/html/rfc5764#section-4.2
-             * 
+             *
              * sharedSecret is an equivalent of :
-             * 
+             *
              * struct {
              *     client_write_SRTP_master_key[SRTPSecurityParams.master_key_len];
              *     server_write_SRTP_master_key[SRTPSecurityParams.master_key_len];
@@ -354,14 +361,14 @@ namespace SIPSorcery.Net
              *  } ;
              *
              * Here, client = local configuration, server = remote.
-             * NOTE [ivelin]: 'local' makes sense if this code is used from a DTLS SRTP client. 
-             *                Here we run as a server, so 'local' referring to the client is actually confusing. 
-             * 
+             * NOTE [ivelin]: 'local' makes sense if this code is used from a DTLS SRTP client.
+             *                Here we run as a server, so 'local' referring to the client is actually confusing.
+             *
              * l(k) = KEY length
              * s(k) = salt lenght
-             * 
+             *
              * So we have the following repartition :
-             *                           l(k)                                 2*l(k)+s(k)   
+             *                           l(k)                                 2*l(k)+s(k)
              *                                                   2*l(k)                       2*(l(k)+s(k))
              * +------------------------+------------------------+---------------+-------------------+
              * + local key           |    remote key    | local salt   | remote salt   |
@@ -395,6 +402,7 @@ namespace SIPSorcery.Net
             {
                 description += message;
             }
+
             if (cause != null)
             {
                 description += cause;
@@ -442,11 +450,13 @@ namespace SIPSorcery.Net
 
             if (alertType == AlertTypesEnum.close_notify)
             {
-                logger.LogDebug($"DTLS client received close notification: {AlertLevel.GetText(alertLevel)}, {description}.");
+                logger.LogDebug(
+                    $"DTLS client received close notification: {AlertLevel.GetText(alertLevel)}, {description}.");
             }
             else
             {
-                logger.LogWarning($"DTLS client received unexpected alert: {AlertLevel.GetText(alertLevel)}, {description}.");
+                logger.LogWarning(
+                    $"DTLS client received unexpected alert: {AlertLevel.GetText(alertLevel)}, {description}.");
             }
 
             OnAlert?.Invoke(level, alertType, description);

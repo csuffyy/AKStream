@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Web;
 using AKStreamKeeper.Attributes;
 using AKStreamKeeper.Services;
 using LibCommon;
@@ -9,6 +10,9 @@ using Swashbuckle.AspNetCore.Annotations;
 
 namespace AKStreamKeeper.Controllers
 {
+    /// <summary>
+    /// 流媒体服务器相关接口
+    /// </summary>
     [Log]
     [AuthVerify]
     [ApiController]
@@ -16,6 +20,27 @@ namespace AKStreamKeeper.Controllers
     [SwaggerTag("流媒体服务器相关接口")]
     public class ApiServiceController : ControllerBase
     {
+        /// <summary>
+        /// 检查磁盘是否可写
+        /// </summary>
+        /// <param name="AccessKey"></param>
+        /// <param name="dirPath"></param>
+        /// <returns></returns>
+        /// <exception cref="AkStreamException"></exception>
+        [Route("CheckDiskWriteable")]
+        [HttpGet]
+        public bool CheckDiskWriteable([FromHeader(Name = "AccessKey")] string AccessKey, string dirPath)
+        {
+            ResponseStruct rs;
+            var ret = Common.MediaServerInstance.CheckDiskWritable(HttpUtility.UrlDecode(dirPath), out rs);
+            if (!rs.Code.Equals(ErrorNumber.None))
+            {
+                throw new AkStreamException(rs);
+            }
+
+            return ret;
+        }
+
         /// <summary>
         /// 删除ffmpeg模板
         /// </summary>
@@ -367,7 +392,7 @@ namespace AKStreamKeeper.Controllers
             var ret = ApiService.ReleaseRtpPort(port);
             return ret;
         }
-        
+
         /// <summary>
         /// 释放被用过的rtp(发送)端口
         /// </summary>
@@ -404,6 +429,7 @@ namespace AKStreamKeeper.Controllers
 
             return ret;
         }
+
         /// <summary>
         ///  获取一个可用的rtp(发送)端口（配置文件中minSenderPort-maxSenderPort的范围内的偶数端口）
         /// </summary>

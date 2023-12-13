@@ -12,7 +12,8 @@ namespace AKStreamWeb.Services
         /// </summary>
         /// <param name="rs"></param>
         /// <returns></returns>
-        public static List<VideoChannel> GetShareChannelList(out ResponseStruct rs){
+        public static List<VideoChannel> GetShareChannelList(out ResponseStruct rs)
+        {
             rs = new ResponseStruct()
             {
                 Code = ErrorNumber.None,
@@ -20,9 +21,21 @@ namespace AKStreamWeb.Services
             };
             try
             {
+                #region debug sql output
+
+                if (Common.IsDebug)
+                {
+                    var sql = ORMHelper.Db.Select<VideoChannel>().Where(x => x.IsShareChannel.Equals(true))
+                        .Where(x => x.Enabled.Equals(true)).ToSql();
+
+                    GCommon.Logger.Debug(
+                        $"[{Common.LoggerHead}]->GetShareChannelList->执行SQL:->{sql}");
+                }
+
+                #endregion
+
                 return ORMHelper.Db.Select<VideoChannel>().Where(x => x.IsShareChannel.Equals(true))
-                    .Where(x=>x.Enabled.Equals(true)).ToList();
-                
+                    .Where(x => x.Enabled.Equals(true)).ToList();
             }
             catch (Exception ex)
             {
@@ -34,14 +47,15 @@ namespace AKStreamWeb.Services
                     ExceptStackTrace = ex.StackTrace,
                 };
                 return null;
-            } 
+            }
         }
+
         /// <summary>
         /// 获取可共享通道数量
         /// </summary>
         /// <param name="rs"></param>
         /// <returns></returns>
-        public static int ShareChannelSumCount( out ResponseStruct rs)
+        public static int ShareChannelSumCount(out ResponseStruct rs)
         {
             rs = new ResponseStruct()
             {
@@ -50,10 +64,22 @@ namespace AKStreamWeb.Services
             };
             try
             {
+                #region debug sql output
+
+                if (Common.IsDebug)
+                {
+                    var sql = ORMHelper.Db.Select<VideoChannel>().Where(x => x.IsShareChannel.Equals(true))
+                        .Where(x => x.Enabled.Equals(true)).ToSql();
+
+                    GCommon.Logger.Debug(
+                        $"[{Common.LoggerHead}]->ShareChannelSumCount->执行SQL:->{sql}");
+                }
+
+                #endregion
+
                 return (int)ORMHelper.Db.Select<VideoChannel>().Where(x => x.IsShareChannel.Equals(true))
-                    .Where(x=>x.Enabled.Equals(true))
+                    .Where(x => x.Enabled.Equals(true))
                     .Count();
-                
             }
             catch (Exception ex)
             {

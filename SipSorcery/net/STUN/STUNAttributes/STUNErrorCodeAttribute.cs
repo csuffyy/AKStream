@@ -20,8 +20,8 @@ namespace SIPSorcery.Net
 {
     public class STUNErrorCodeAttribute : STUNAttribute
     {
-        public byte ErrorClass;             // The hundreds value of the error code must be between 3 and 6.
-        public byte ErrorNumber;            // The units value of the error code must be between 0 and 99.
+        public byte ErrorClass; // The hundreds value of the error code must be between 3 and 6.
+        public byte ErrorNumber; // The units value of the error code must be between 0 and 99.
         public string ReasonPhrase;
 
         public int ErrorCode
@@ -63,7 +63,8 @@ namespace SIPSorcery.Net
 
         public override string ToString()
         {
-            string attrDescrStr = "STUN ERROR_CODE_ADDRESS Attribute: error code=" + ErrorCode + ", reason phrase=" + ReasonPhrase + ".";
+            string attrDescrStr = "STUN ERROR_CODE_ADDRESS Attribute: error code=" + ErrorCode + ", reason phrase=" +
+                                  ReasonPhrase + ".";
 
             return attrDescrStr;
         }

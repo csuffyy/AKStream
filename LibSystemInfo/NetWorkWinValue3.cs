@@ -55,7 +55,6 @@ namespace LibSystemInfo
                 {
                     lock (lockObj)
                     {
-                       
                         NetworkInterface[] nifs = NetworkInterface.GetAllNetworkInterfaces();
                         if (nifs != null && nifs.Length > 0)
                         {
@@ -72,10 +71,12 @@ namespace LibSystemInfo
                                     {
                                         tmpRecvByte += statis.BytesReceived;
                                         tmpSendByte += statis.BytesSent;
-                                        if (string.IsNullOrEmpty(NetWorkStat.Mac) || NetWorkStat.Mac=="00-00-00-00-00-00")
+                                        if (string.IsNullOrEmpty(NetWorkStat.Mac) ||
+                                            NetWorkStat.Mac == "00-00-00-00-00-00")
                                         {
                                             NetWorkStat.Mac = nif.GetPhysicalAddress().ToString();
-                                            NetWorkStat.Mac = InsertFormat(NetWorkStat.Mac, 2, "-").TrimEnd('-').ToUpper();
+                                            NetWorkStat.Mac = InsertFormat(NetWorkStat.Mac, 2, "-").TrimEnd('-')
+                                                .ToUpper();
                                         }
                                     }
                                 }
@@ -87,18 +88,18 @@ namespace LibSystemInfo
                                 NetWorkStat.CurrentSendBytes = 0;
                                 NetWorkStat.TotalRecvBytes = 0;
                                 NetWorkStat.TotalSendBytes = 0;
-                                _recvPer = (ulong) tmpRecvByte;
-                                _sendPer = (ulong) tmpSendByte;
+                                _recvPer = (ulong)tmpRecvByte;
+                                _sendPer = (ulong)tmpSendByte;
                             }
                             else
                             {
                                 NetWorkStat.UpdateTime = DateTime.Now;
-                                NetWorkStat.CurrentRecvBytes = (ulong) tmpRecvByte - _recvPer;
-                                NetWorkStat.CurrentSendBytes = (ulong) tmpSendByte - _sendPer;
-                                NetWorkStat.TotalRecvBytes = (ulong) tmpRecvByte;
-                                NetWorkStat.TotalSendBytes = (ulong) tmpSendByte;
-                                _recvPer = (ulong) tmpRecvByte;
-                                _sendPer = (ulong) tmpSendByte;
+                                NetWorkStat.CurrentRecvBytes = (ulong)tmpRecvByte - _recvPer;
+                                NetWorkStat.CurrentSendBytes = (ulong)tmpSendByte - _sendPer;
+                                NetWorkStat.TotalRecvBytes = (ulong)tmpRecvByte;
+                                NetWorkStat.TotalSendBytes = (ulong)tmpSendByte;
+                                _recvPer = (ulong)tmpRecvByte;
+                                _sendPer = (ulong)tmpSendByte;
                             }
                         }
                     }

@@ -35,7 +35,8 @@ namespace SIPSorcery.SIP
         public List<SIPEventPresenceTuple> Tuples = new List<SIPEventPresenceTuple>();
 
         public SIPEventPresence()
-        { }
+        {
+        }
 
         public SIPEventPresence(SIPURI entity)
         {

@@ -59,7 +59,8 @@ namespace LibZLMediaKitMediaServer.Structs.WebResponse.ZLMediaKit
         pull = 4,
         ffmpeg_pull = 5,
         mp4_vod = 6,
-        device_chn = 7
+        device_chn = 7,
+        rtc_push = 8
     }
 
     [Serializable]
@@ -69,9 +70,10 @@ namespace LibZLMediaKitMediaServer.Structs.WebResponse.ZLMediaKit
         private int? _codec_id;
         private string? _codec_id_name;
         private int? _codec_type;
-        private int? _fps;
+        private float? _fps;
+        private float? _loss;
         private int? _height;
-        private string? _ready;
+        private bool? _ready;
         private int? _sample_bit;
         private int? _sample_rate;
         private int? _width;
@@ -106,7 +108,7 @@ namespace LibZLMediaKitMediaServer.Structs.WebResponse.ZLMediaKit
         }
 
         [JsonProperty("ready")]
-        public string? Ready
+        public bool? Ready
         {
             get => _ready;
             set => _ready = value;
@@ -126,22 +128,32 @@ namespace LibZLMediaKitMediaServer.Structs.WebResponse.ZLMediaKit
             set => _sample_rate = value;
         }
 
-        public int? Fps
+        [JsonProperty("fps")]
+        public float? Fps
         {
             get => _fps;
             set => _fps = value;
         }
 
+        [JsonProperty("width")]
         public int? Width
         {
             get => _width;
             set => _width = value;
         }
 
+        [JsonProperty("height")]
         public int? Height
         {
             get => _height;
             set => _height = value;
+        }
+
+        [JsonProperty("loss")]
+        public float? Loss
+        {
+            get => _loss;
+            set => _loss = value;
         }
     }
 
@@ -152,6 +164,8 @@ namespace LibZLMediaKitMediaServer.Structs.WebResponse.ZLMediaKit
         private string? _app;
         private int? _bytesSpeed;
         private long? _createStamp;
+        private bool? _isRecordingHLS;
+        private bool? _isRecordingMP4;
         private OriginSock? _originSock;
         private OriginType? _originType;
         private string? _originTypeStr;
@@ -259,6 +273,20 @@ namespace LibZLMediaKitMediaServer.Structs.WebResponse.ZLMediaKit
         {
             get => _tracks;
             set => _tracks = value;
+        }
+
+        [JsonProperty("isRecordingHLS")]
+        public bool? IsRecordingHls
+        {
+            get => _isRecordingHLS;
+            set => _isRecordingHLS = value;
+        }
+
+        [JsonProperty("isRecordingMP4")]
+        public bool? IsRecordingMp4
+        {
+            get => _isRecordingMP4;
+            set => _isRecordingMP4 = value;
         }
     }
 

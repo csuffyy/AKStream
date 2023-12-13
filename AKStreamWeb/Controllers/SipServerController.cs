@@ -10,6 +10,9 @@ using Swashbuckle.AspNetCore.Annotations;
 
 namespace AKStreamWeb.Controllers
 {
+    /// <summary>
+    /// Sip网关相关接口
+    /// </summary>
     [Log]
     [AuthVerify]
     [ApiController]
@@ -17,10 +20,6 @@ namespace AKStreamWeb.Controllers
     [SwaggerTag("Sip网关相关接口")]
     public class SipServerController : ControllerBase
     {
-        
-     
-      
-        
         /// <summary>
         /// 终止回放流
         /// </summary>

@@ -60,7 +60,7 @@ namespace SIPSorcery.Net
     {
         public const uint DEFAULT_ADVERTISED_RECEIVE_WINDOW = 262144U;
         public const int DEFAULT_NUMBER_OUTBOUND_STREAMS = 65535;
-        public const int DEFAULT_NUMBER_INBOUND_STREAMS = 65535; 
+        public const int DEFAULT_NUMBER_INBOUND_STREAMS = 65535;
         private const byte SHUTDOWN_CHUNK_TBIT_FLAG = 0x01;
 
         /// <summary>
@@ -76,7 +76,7 @@ namespace SIPSorcery.Net
         private const int T1_COOKIE_TIMER_MILLISECONDS = 1000;
 
         private const int MAX_COOKIE_ECHO_RETRANSMITS = 3;
-         
+
         private static ILogger logger = LogFactory.CreateLogger<SctpAssociation>();
 
         SctpTransport _sctpTransport;
@@ -220,7 +220,8 @@ namespace SIPSorcery.Net
             ARwnd = DEFAULT_ADVERTISED_RECEIVE_WINDOW;
 
             _dataReceiver = new SctpDataReceiver(ARwnd, _defaultMTU, 0);
-            _dataSender = new SctpDataSender(ID, this.SendChunk, defaultMTU, Crypto.GetRandomUInt(true), DEFAULT_ADVERTISED_RECEIVE_WINDOW);
+            _dataSender = new SctpDataSender(ID, this.SendChunk, defaultMTU, Crypto.GetRandomUInt(true),
+                DEFAULT_ADVERTISED_RECEIVE_WINDOW);
 
             State = SctpAssociationState.Closed;
         }
@@ -318,8 +319,9 @@ namespace SIPSorcery.Net
                 _sctpDestinationPort = cookie.DestinationPort;
                 VerificationTag = cookie.Tag;
                 ARwnd = cookie.ARwnd;
-                Destination = !string.IsNullOrEmpty(cookie.RemoteEndPoint) ?
-                    IPSocket.Parse(cookie.RemoteEndPoint) : null;
+                Destination = !string.IsNullOrEmpty(cookie.RemoteEndPoint)
+                    ? IPSocket.Parse(cookie.RemoteEndPoint)
+                    : null;
 
                 if (_dataReceiver == null)
                 {
@@ -374,17 +376,17 @@ namespace SIPSorcery.Net
             else if (packet.Header.VerificationTag != VerificationTag)
             {
                 logger.LogWarning($"SCTP packet dropped due to wrong verification tag, expected " +
-                    $"{VerificationTag} got {packet.Header.VerificationTag}.");
+                                  $"{VerificationTag} got {packet.Header.VerificationTag}.");
             }
             else if (!_sctpTransport.IsPortAgnostic && packet.Header.DestinationPort != _sctpSourcePort)
             {
                 logger.LogWarning($"SCTP packet dropped due to wrong SCTP destination port, expected " +
-                                    $"{_sctpSourcePort} got {packet.Header.DestinationPort}.");
+                                  $"{_sctpSourcePort} got {packet.Header.DestinationPort}.");
             }
             else if (!_sctpTransport.IsPortAgnostic && packet.Header.SourcePort != _sctpDestinationPort)
             {
                 logger.LogWarning($"SCTP packet dropped due to wrong SCTP source port, expected " +
-                                    $"{_sctpDestinationPort} got {packet.Header.SourcePort}.");
+                                  $"{_sctpDestinationPort} got {packet.Header.SourcePort}.");
             }
             else
             {
@@ -396,7 +398,8 @@ namespace SIPSorcery.Net
                     {
                         case SctpChunkType.ABORT:
                             string abortReason = (chunk as SctpAbortChunk).GetAbortReason();
-                            logger.LogWarning($"SCTP packet ABORT chunk received from remote party, reason {abortReason}.");
+                            logger.LogWarning(
+                                $"SCTP packet ABORT chunk received from remote party, reason {abortReason}.");
                             _wasAborted = true;
                             OnAbortReceived?.Invoke(abortReason);
                             break;
@@ -434,7 +437,8 @@ namespace SIPSorcery.Net
                             }
                             else
                             {
-                                logger.LogTrace($"SCTP data chunk received on ID {ID} with TSN {dataChunk.TSN}, payload length {dataChunk.UserData.Length}, flags {dataChunk.ChunkFlags:X2}.");
+                                logger.LogTrace(
+                                    $"SCTP data chunk received on ID {ID} with TSN {dataChunk.TSN}, payload length {dataChunk.UserData.Length}, flags {dataChunk.ChunkFlags:X2}.");
 
                                 // A received data chunk can result in multiple data frames becoming available.
                                 // For example if a stream has out of order frames already received and the next
@@ -461,6 +465,7 @@ namespace SIPSorcery.Net
                             {
                                 logger.LogWarning($"SCTP error {err.CauseCode}.");
                             }
+
                             break;
 
                         case SctpChunkType.HEARTBEAT:
@@ -499,7 +504,8 @@ namespace SIPSorcery.Net
                             }
                             else
                             {
-                                InitRemoteProperties(initAckChunk.InitiateTag, initAckChunk.InitialTSN, initAckChunk.ARwnd);
+                                InitRemoteProperties(initAckChunk.InitiateTag, initAckChunk.InitialTSN,
+                                    initAckChunk.ARwnd);
 
                                 var cookie = initAckChunk.StateCookie;
 
@@ -514,7 +520,8 @@ namespace SIPSorcery.Net
 
                                     foreach (var unrecognised in initAckChunk.UnrecognizedPeerParameters)
                                     {
-                                        var unrecognisedParams = new SctpErrorUnrecognizedParameters { UnrecognizedParameters = unrecognised.GetBytes() };
+                                        var unrecognisedParams = new SctpErrorUnrecognizedParameters
+                                            { UnrecognizedParameters = unrecognised.GetBytes() };
                                         errChunk.AddErrorCause(unrecognisedParams);
                                     }
 
@@ -524,12 +531,15 @@ namespace SIPSorcery.Net
                                 SendPacket(cookieEchoPkt);
                                 SetState(SctpAssociationState.CookieEchoed);
 
-                                _t1Cookie = new Timer(T1CookieTimerExpired, cookieEchoPkt, T1_COOKIE_TIMER_MILLISECONDS, T1_COOKIE_TIMER_MILLISECONDS);
+                                _t1Cookie = new Timer(T1CookieTimerExpired, cookieEchoPkt, T1_COOKIE_TIMER_MILLISECONDS,
+                                    T1_COOKIE_TIMER_MILLISECONDS);
                             }
+
                             break;
 
                         case var ct when ct == SctpChunkType.INIT_ACK && State != SctpAssociationState.CookieWait:
-                            logger.LogWarning($"SCTP association received INIT_ACK chunk in wrong state of {State}, ignoring.");
+                            logger.LogWarning(
+                                $"SCTP association received INIT_ACK chunk in wrong state of {State}, ignoring.");
                             break;
 
                         case SctpChunkType.SACK:
@@ -553,7 +563,8 @@ namespace SIPSorcery.Net
                             break;
 
                         case var ct when ct == SctpChunkType.SHUTDOWN_COMPLETE &&
-                                (State == SctpAssociationState.ShutdownAckSent || State == SctpAssociationState.ShutdownSent):
+                                         (State == SctpAssociationState.ShutdownAckSent ||
+                                          State == SctpAssociationState.ShutdownSent):
                             _wasShutdown = true;
                             SetState(SctpAssociationState.Closed);
                             break;
@@ -576,7 +587,8 @@ namespace SIPSorcery.Net
         {
             if (string.IsNullOrEmpty(message))
             {
-                throw new ArgumentNullException("The message cannot be empty when sending a data chunk on an SCTP association.");
+                throw new ArgumentNullException(
+                    "The message cannot be empty when sending a data chunk on an SCTP association.");
             }
 
             SendData(streamID, ppid, Encoding.UTF8.GetBytes(message));
@@ -595,8 +607,8 @@ namespace SIPSorcery.Net
                 logger.LogWarning($"SCTP send data is not allowed on an aborted association.");
             }
             else if (!(State == SctpAssociationState.Established ||
-                      State == SctpAssociationState.ShutdownPending ||
-                      State == SctpAssociationState.ShutdownReceived))
+                       State == SctpAssociationState.ShutdownPending ||
+                       State == SctpAssociationState.ShutdownReceived))
             {
                 logger.LogWarning($"SCTP send data is not allowed for an association in state {State}.");
             }
@@ -614,9 +626,9 @@ namespace SIPSorcery.Net
         public SctpPacket GetControlPacket(SctpChunk chunk)
         {
             SctpPacket pkt = new SctpPacket(
-           _sctpSourcePort,
-           _sctpDestinationPort,
-           _remoteVerificationTag);
+                _sctpSourcePort,
+                _sctpDestinationPort,
+                _remoteVerificationTag);
 
             pkt.AddChunk(chunk);
 
@@ -722,9 +734,9 @@ namespace SIPSorcery.Net
             if (!_wasAborted)
             {
                 SctpPacket pkt = new SctpPacket(
-                _sctpSourcePort,
-                _sctpDestinationPort,
-                _remoteVerificationTag);
+                    _sctpSourcePort,
+                    _sctpDestinationPort,
+                    _remoteVerificationTag);
 
                 pkt.AddChunk(chunk);
 

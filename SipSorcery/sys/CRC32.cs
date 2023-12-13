@@ -88,6 +88,7 @@ namespace SIPSorcery.Sys
                         entry = entry >> 1;
                     }
                 }
+
                 createTable[i] = entry;
             }
 
@@ -109,12 +110,14 @@ namespace SIPSorcery.Sys
                     crc = (crc >> 8) ^ table[buffer[i] ^ crc & 0xff];
                 }
             }
+
             return crc;
         }
 
         private byte[] UInt32ToBigEndianBytes(UInt32 x)
         {
-            return new byte[] {
+            return new byte[]
+            {
                 (byte)((x >> 24) & 0xff),
                 (byte)((x >> 16) & 0xff),
                 (byte)((x >> 8) & 0xff),

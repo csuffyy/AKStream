@@ -16,13 +16,80 @@ using Swashbuckle.AspNetCore.Annotations;
 
 namespace AKStreamWeb.Controllers
 {
+    /// <summary>
+    /// 流媒体相关接口
+    /// </summary>
     [Log]
     [ApiController]
     [Route("/MediaServer")]
     [SwaggerTag("流媒体相关接口")]
     public class MediaServerController : ControllerBase
     {
-        
+        /// <summary>
+        /// 添加一个rtsp鉴权记录
+        /// </summary>
+        /// <param name="req"></param>
+        /// <returns></returns>
+        /// <exception cref="AkStreamException"></exception>
+        [Route("AddRtspAuthData")]
+        [HttpPost]
+        [AuthVerify]
+        public bool AddRtspAuthData([FromHeader(Name = "AccessKey")] UserAuth req)
+        {
+            ResponseStruct rs;
+            var ret = MediaServerService.AddRtspAuthData(req, out rs);
+            if (!rs.Code.Equals(ErrorNumber.None))
+            {
+                throw new AkStreamException(rs);
+            }
+
+            return ret;
+        }
+
+        /// <summary>
+        /// 删除一个rtsp鉴权记录
+        /// </summary>
+        /// <param name="req"></param>
+        /// <returns></returns>
+        /// <exception cref="AkStreamException"></exception>
+        [Route("DeleteRtspAuthData")]
+        [HttpPost]
+        [AuthVerify]
+        public bool DeleteRtspAuthData([FromHeader(Name = "AccessKey")] UserAuth req)
+        {
+            ResponseStruct rs;
+            var ret = MediaServerService.DeleteRtspAuthData(req, out rs);
+            if (!rs.Code.Equals(ErrorNumber.None))
+            {
+                throw new AkStreamException(rs);
+            }
+
+            return ret;
+        }
+
+
+        /// <summary>
+        /// 获取rtsp鉴权列表
+        /// </summary>
+        /// <param name="req"></param>
+        /// <returns></returns>
+        /// <exception cref="AkStreamException"></exception>
+        [Route("GetRtspAuthData")]
+        [HttpPost]
+        [AuthVerify]
+        public List<UserAuth> GetRtspAuthData([FromHeader(Name = "AccessKey")] UserAuth? req)
+        {
+            ResponseStruct rs;
+            var ret = MediaServerService.GetRtspAuthData(req, out rs);
+            if (!rs.Code.Equals(ErrorNumber.None))
+            {
+                throw new AkStreamException(rs);
+            }
+
+            return ret;
+        }
+
+
         /// <summary>
         /// 获取当前的开放的rtpServer列表
         /// </summary>
@@ -33,7 +100,7 @@ namespace AKStreamWeb.Controllers
         [Route("ListRtpServer")]
         [HttpGet]
         public List<ushort> ListRtpServer(
-            [FromHeader(Name = "AccessKey")] string AccessKey, string mediaServerId )
+            [FromHeader(Name = "AccessKey")] string AccessKey, string mediaServerId)
         {
             ResponseStruct rs;
             var ret = MediaServerService.ListRtpServer(mediaServerId, out rs);
@@ -51,7 +118,7 @@ namespace AKStreamWeb.Controllers
                 return new List<ushort>();
             }
         }
-        
+
         /// <summary>
         /// 添加一个裁剪合并任务
         /// </summary>
@@ -560,7 +627,7 @@ namespace AKStreamWeb.Controllers
 
             return ret;
         }
-        
+
         /// <summary>
         /// 激活音视频通道实例
         /// </summary>

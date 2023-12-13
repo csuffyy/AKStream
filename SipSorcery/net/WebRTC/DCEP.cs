@@ -97,7 +97,7 @@ namespace SIPSorcery.Net
         ///  This field holds the IANA-defined message type for the
         /// DATA_CHANNEL_OPEN message.The value of this field is 0x03.
         /// </summary>
-        public byte MessageType; 
+        public byte MessageType;
 
         /// <summary>
         /// This field specifies the type of data channel to be opened.
@@ -140,7 +140,8 @@ namespace SIPSorcery.Net
         {
             if (buffer.Length < DCEP_OPEN_FIXED_PARAMETERS_LENGTH)
             {
-                throw new ApplicationException("The buffer did not contain the minimum number of bytes for a DCEP open message.");
+                throw new ApplicationException(
+                    "The buffer did not contain the minimum number of bytes for a DCEP open message.");
             }
 
             var dcepOpen = new DataChannelOpenMessage();

@@ -27,6 +27,7 @@ namespace SIPSorcery.Sys
                 double teraNumber = Math.Round((double)(number / (double)100000000000), decimalPlaces);
                 return teraNumber.ToString() + "T";
             }
+
             if (number > 1000000000)
             {
                 double gigaNumber = Math.Round((double)(number / (double)100000000), decimalPlaces);
@@ -55,6 +56,7 @@ namespace SIPSorcery.Sys
                 double teraNumber = Math.Round((double)(number / (double)1099511627776), decimalPlaces);
                 return teraNumber.ToString() + "T" + suffix;
             }
+
             if (number > 1073741824)
             {
                 double gigaNumber = Math.Round((double)(number / (double)1073741824), decimalPlaces);

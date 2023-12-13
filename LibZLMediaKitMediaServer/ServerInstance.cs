@@ -26,6 +26,7 @@ namespace LibZLMediaKitMediaServer
         private ushort _httpsPort;
         private string _ipV4Address;
         private string _ipV6Address;
+        private string? _candidate;
         private bool _isKeeperRunning;
         private bool _isMediaServerRunning;
         private Timer _keepAliveCheckTimer;
@@ -50,11 +51,36 @@ namespace LibZLMediaKitMediaServer
         private WebApiHelper _webApiHelper;
         private int _zlmediakitPid;
         private uint _zlmRecordFileSec;
-      
+        private int? _recordSec;
+        private DateTime? _zlmBuildDateTime;
+        private string? _akstreamKeeperVersion;
+        private Dictionary<string, int>? _disksUseable = new Dictionary<string, int>();
+        private bool? _isInitRtspAuthData = false;
+        private string? _cutMergeFilePath;
+
 
         public ServerInstance()
         {
-            startTimer();
+            StartTimer();
+        }
+
+        /// <summary>
+        /// keeper的版本号
+        /// </summary>
+        public string? AKStreamKeeperVersion
+        {
+            get => _akstreamKeeperVersion;
+            set => _akstreamKeeperVersion = value;
+        }
+
+
+        /// <summary>
+        /// keeper对外服务的ip地址（公网ip地址）
+        /// </summary>
+        public string? Candidate
+        {
+            get => _candidate;
+            set => _candidate = value;
         }
 
 
@@ -82,7 +108,7 @@ namespace LibZLMediaKitMediaServer
             set => _keeperPort = value;
         }
 
-       
+
         public string Secret
         {
             get => _secret;
@@ -261,8 +287,52 @@ namespace LibZLMediaKitMediaServer
             set => _mediaServerPlayerList = value;
         }
 
-        
-  
+        /// <summary>
+        /// 录制文件时长
+        /// </summary>
+        public int? RecordSec
+        {
+            get => _recordSec;
+            set => _recordSec = value;
+        }
+
+        /// <summary>
+        /// ZLM编译时间
+        /// </summary>
+        public DateTime? ZlmBuildDateTime
+        {
+            get => _zlmBuildDateTime;
+            set => _zlmBuildDateTime = value;
+        }
+
+        /// <summary>
+        /// 挂载硬盘是否可用
+        /// </summary>
+        public Dictionary<string, int> DisksUseable
+        {
+            get => _disksUseable;
+            set => _disksUseable = value;
+        }
+
+        /// <summary>
+        /// 初始化过rtspAuth数据
+        /// </summary>
+        public bool? IsInitRtspAuthData
+        {
+            get => _isInitRtspAuthData;
+            set => _isInitRtspAuthData = value;
+        }
+
+        /// <summary>
+        /// 裁剪合并文件目录地址
+        /// </summary>
+        public string CutMergeFilePath
+        {
+            get => _cutMergeFilePath;
+            set => _cutMergeFilePath = value;
+        }
+
+
         public void Dispose()
         {
             if (_keepAliveCheckTimer != null)
@@ -298,7 +368,7 @@ namespace LibZLMediaKitMediaServer
                 }
 
                 if (Math.Abs((DateTime.Now - _keepAliveTime).TotalSeconds) > 10 || _countmod % 30 == 0
-                ) //如果超过10秒没有心跳，就主动查一次健康情况，同时30秒必须查询一次
+                   ) //如果超过10秒没有心跳，就主动查一次健康情况，同时30秒必须查询一次
                 {
                     var ret = _webApiHelper.GetThreadsLoad(out ResponseStruct rs);
                     if (!rs.Code.Equals(ErrorNumber.None))
@@ -315,7 +385,7 @@ namespace LibZLMediaKitMediaServer
             if (_keeperPort != null)
             {
                 if (Math.Abs((DateTime.Now - _keepAliveTime).TotalSeconds) > 10 || _countmod % 10 == 0
-                ) //如果超过10秒没有心跳，就主动查一次健康情况，同时10秒必须查询一次
+                   ) //如果超过10秒没有心跳，就主动查一次健康情况，同时10秒必须查询一次
                 {
                     var ret = _keeperWebApi.KeeperHealth(out ResponseStruct rs);
                     if (!rs.Code.Equals(ErrorNumber.None))
@@ -331,15 +401,17 @@ namespace LibZLMediaKitMediaServer
 
             if (!_isKeeperRunning && !_isMediaServerRunning)
             {
-                GCommon.Ldb.VideoOnlineInfo.DeleteMany(x =>
-                  x.MediaServerId.Equals(this.MediaServerId)); //清除所有在线视频流
-                
+                lock (GCommon.Ldb.LiteDBLockObj)
+                {
+                    GCommon.Ldb.VideoOnlineInfo.DeleteMany(x =>
+                        x.MediaServerId.Equals(this.MediaServerId)); //清除所有在线视频流
+                }
+
                 Dispose();
-              
             }
         }
 
-        private void startTimer()
+        private void StartTimer()
         {
             if (_keepAliveCheckTimer == null)
             {
@@ -351,7 +423,6 @@ namespace LibZLMediaKitMediaServer
             }
         }
 
-      
 
         ~ServerInstance()
         {

@@ -31,7 +31,8 @@ namespace SIPSorcery.Net
 {
     public delegate void OnRTCDataChannelOpened(ushort streamID);
 
-    public delegate void OnNewRTCDataChannel(ushort streamID, DataChannelTypes type, ushort priority, uint reliability, string label, string protocol);
+    public delegate void OnNewRTCDataChannel(ushort streamID, DataChannelTypes type, ushort priority, uint reliability,
+        string label, string protocol);
 
     public class RTCPeerSctpAssociation : SctpAssociation
     {
@@ -76,7 +77,8 @@ namespace SIPSorcery.Net
             : base(rtcSctpTransport, null, srcPort, dstPort, DEFAULT_DTLS_MTU, dtlsPort)
         {
             _rtcSctpTransport = rtcSctpTransport;
-            logger.LogDebug($"SCTP creating DTLS based association, is DTLS client {_rtcSctpTransport.IsDtlsClient}, ID {ID}.");
+            logger.LogDebug(
+                $"SCTP creating DTLS based association, is DTLS client {_rtcSctpTransport.IsDtlsClient}, ID {ID}.");
 
             OnData += OnDataFrameReceived;
         }
@@ -100,17 +102,19 @@ namespace SIPSorcery.Net
                         case (byte)DataChannelMessageTypes.OPEN:
                             var dcepOpen = DataChannelOpenMessage.Parse(frame.UserData, 0);
 
-                            logger.LogDebug($"DCEP OPEN channel type {dcepOpen.ChannelType}, priority {dcepOpen.Priority}, " +
+                            logger.LogDebug(
+                                $"DCEP OPEN channel type {dcepOpen.ChannelType}, priority {dcepOpen.Priority}, " +
                                 $"reliability {dcepOpen.Reliability}, label {dcepOpen.Label}, protocol {dcepOpen.Protocol}.");
 
                             DataChannelTypes channelType = DataChannelTypes.DATA_CHANNEL_RELIABLE;
-                            if(Enum.IsDefined(typeof(DataChannelTypes), dcepOpen.ChannelType))
+                            if (Enum.IsDefined(typeof(DataChannelTypes), dcepOpen.ChannelType))
                             {
                                 channelType = (DataChannelTypes)dcepOpen.ChannelType;
                             }
                             else
                             {
-                                logger.LogWarning($"DECP OPEN channel type of {dcepOpen.ChannelType} not recognised, defaulting to {channelType}.");
+                                logger.LogWarning(
+                                    $"DECP OPEN channel type of {dcepOpen.ChannelType} not recognised, defaulting to {channelType}.");
                             }
 
                             OnNewDataChannel?.Invoke(
@@ -126,6 +130,7 @@ namespace SIPSorcery.Net
                             logger.LogWarning($"DCEP message type {frame.UserData[0]} not recognised, ignoring.");
                             break;
                     }
+
                     break;
 
                 default:

@@ -206,26 +206,26 @@ namespace SIPSorcery.Net
                 GetDistance(_initialTSN, dataChunk.TSN) > _windowSize)
             {
                 logger.LogWarning($"SCTP data receiver received a data chunk with a {dataChunk.TSN} " +
-                    $"TSN when the initial TSN was {_initialTSN} and a " +
-                    $"window size of {_windowSize}, ignoring.");
+                                  $"TSN when the initial TSN was {_initialTSN} and a " +
+                                  $"window size of {_windowSize}, ignoring.");
             }
             else if (_inOrderReceiveCount > 0 &&
-                GetDistance(_lastInOrderTSN, dataChunk.TSN) > _windowSize)
+                     GetDistance(_lastInOrderTSN, dataChunk.TSN) > _windowSize)
             {
                 logger.LogWarning($"SCTP data receiver received a data chunk with a {dataChunk.TSN} " +
-                    $"TSN when the expected TSN was {_lastInOrderTSN + 1} and a " +
-                    $"window size of {_windowSize}, ignoring.");
+                                  $"TSN when the expected TSN was {_lastInOrderTSN + 1} and a " +
+                                  $"window size of {_windowSize}, ignoring.");
             }
             else if (_inOrderReceiveCount > 0 &&
-                !IsNewer(_lastInOrderTSN, dataChunk.TSN))
+                     !IsNewer(_lastInOrderTSN, dataChunk.TSN))
             {
                 logger.LogWarning($"SCTP data receiver received an old data chunk with {dataChunk.TSN} " +
-                    $"TSN when the expected TSN was {_lastInOrderTSN + 1}, ignoring.");
+                                  $"TSN when the expected TSN was {_lastInOrderTSN + 1}, ignoring.");
             }
             else if (!_forwardTSN.ContainsKey(dataChunk.TSN))
             {
                 logger.LogTrace($"SCTP receiver got data chunk with TSN {dataChunk.TSN}, " +
-                    $"last in order TSN {_lastInOrderTSN}, in order receive count {_inOrderReceiveCount}.");
+                                $"last in order TSN {_lastInOrderTSN}, in order receive count {_inOrderReceiveCount}.");
 
                 // Relying on unsigned integer wrapping.
                 unchecked
@@ -408,7 +408,7 @@ namespace SIPSorcery.Net
 
                         ushort nextSeqnum = (ushort)(_streamLatestSeqNums[frame.StreamID] + 1);
                         while (outOfOrder.ContainsKey(nextSeqnum) &&
-                            outOfOrder.TryGetValue(nextSeqnum, out var nextFrame))
+                               outOfOrder.TryGetValue(nextSeqnum, out var nextFrame))
                         {
                             sortedFrames.Add(nextFrame);
                             _streamLatestSeqNums[frame.StreamID] = nextSeqnum;
@@ -427,7 +427,8 @@ namespace SIPSorcery.Net
 
                     if (_streamOutOfOrderFrames[frame.StreamID].Count > MAXIMUM_OUTOFORDER_FRAMES)
                     {
-                        logger.LogWarning($"SCTP data receiver exceeded the maximum queue size for out of order frames for stream ID {frame.StreamID}.");
+                        logger.LogWarning(
+                            $"SCTP data receiver exceeded the maximum queue size for out of order frames for stream ID {frame.StreamID}.");
                         // TODO https://tools.ietf.org/html/rfc4960#section-6.2 says to drop the chunk with the highest TSN that's ahead of the 
                         // ack'ed TSN.
                     }
@@ -502,7 +503,8 @@ namespace SIPSorcery.Net
                 byte[] full = new byte[MAX_FRAME_SIZE];
                 int posn = 0;
                 var beginChunk = fragments[beginTSN];
-                var frame = new SctpDataFrame(beginChunk.Unordered, beginChunk.StreamID, beginChunk.StreamSeqNum, beginChunk.PPID, full);
+                var frame = new SctpDataFrame(beginChunk.Unordered, beginChunk.StreamID, beginChunk.StreamSeqNum,
+                    beginChunk.PPID, full);
 
                 uint afterEndTSN = endTSN + 1;
                 uint tsn = beginTSN;

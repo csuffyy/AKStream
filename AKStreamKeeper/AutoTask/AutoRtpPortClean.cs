@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Threading;
 using AKStreamKeeper.Services;
 using LibCommon;
-using LibLogger;
 
 namespace AKStreamKeeper.AutoTask;
 
@@ -24,24 +23,28 @@ public class AutoRtpPortClean
     }
 
 
+    private void DeleteExpiredLogFiles()
+    {
+    }
+
     /// <summary>
     /// 获取rtpserver列表 
     /// </summary>
     /// <returns></returns>
-    private List<ushort> GetPortRptList()
+    private List<ushort> GetPortRptList(out ResponseStruct rs)
     {
-        ResponseStruct rs = new ResponseStruct()
+        rs = new ResponseStruct()
         {
             Code = ErrorNumber.None,
             Message = ErrorMessage.ErrorDic![ErrorNumber.None],
         };
-      
+
         var uri = new Uri(Common.MediaServerInstance.AkStreamKeeperConfig.AkStreamWebRegisterUrl, false);
 
         var url =
             $"{uri.Scheme}://{uri.Host}:{uri.Port}/MediaServer/ListRtpServer?mediaServerId={Common.MediaServerInstance.MediaServerId}";
-      
-     
+
+
         var httpRet = NetHelper.HttpGetRequest(url, null, "utf-8", 500);
 
         if (!string.IsNullOrEmpty(httpRet))
@@ -56,27 +59,42 @@ public class AutoRtpPortClean
                 return null;
             }
 
-            var ports = JsonHelper.FromJson<List<ushort>>(httpRet);
-            if (ports != null)
+            if (httpRet.Contains(ErrorMessage.ErrorDic[ErrorNumber.MediaServer_InstanceIsNull]))
             {
-                return ports;
+                rs = new ResponseStruct()
+                {
+                    Code = ErrorNumber.MediaServer_ObjectNotExists,
+                    Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_ObjectNotExists],
+                };
+                GCommon.Logger.Warn($"[{Common.LoggerHead}]->流媒体服务器还未就绪,无法提供RtpServer列表,下次循环继续尝试...");
+                return null;
             }
 
-            rs = new ResponseStruct()
+            List<ushort> ports = null;
+            try
             {
-                Code = ErrorNumber.MediaServer_WebApiDataExcept,
-                Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_WebApiDataExcept],
-                ExceptMessage = httpRet,
-            };
+                ports = JsonHelper.FromJson<List<ushort>>(httpRet);
+            }
+            catch (Exception ex)
+            {
+                rs = new ResponseStruct()
+                {
+                    Code = ErrorNumber.Sys_JsonReadExcept,
+                    Message = ErrorMessage.ErrorDic![ErrorNumber.Sys_JsonReadExcept],
+                    ExceptMessage = ex.Message,
+                    ExceptStackTrace = ex.StackTrace
+                };
+                return null;
+            }
+
+            return ports;
         }
-        else
+
+        rs = new ResponseStruct()
         {
-            rs = new ResponseStruct()
-            {
-                Code = ErrorNumber.MediaServer_WebApiDataExcept,
-                Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_WebApiDataExcept],
-            };
-        }
+            Code = ErrorNumber.MediaServer_WebApiDataExcept,
+            Message = ErrorMessage.ErrorDic![ErrorNumber.MediaServer_WebApiDataExcept],
+        };
 
         return null;
     }
@@ -86,50 +104,57 @@ public class AutoRtpPortClean
         GCommon.Logger.Debug($"[{Common.LoggerHead}]->创建Rtp端口清理自动任务");
         while (true)
         {
-            var ports = GetPortRptList();
-            GCommon.Logger.Debug($"[{Common.LoggerHead}]->获取在用Rtp端口列表->{JsonHelper.ToJson(ports)}");
-            if (ports != null)
+            
+            ResponseStruct rs = null;
+
+            var ports = GetPortRptList(out rs);
+            if (rs.Code != ErrorNumber.None)
             {
-                if (ports.Count == 0)
+                GCommon.Logger.Warn($"[{Common.LoggerHead}]->获取Rtp端口列表异常->{JsonHelper.ToJson(rs)}");
+            }
+            else
+            {
+                GCommon.Logger.Debug($"[{Common.LoggerHead}]->获取在用Rtp端口列表->{JsonHelper.ToJson(ports)}");
+                if (ports != null)
                 {
-                    foreach (var pi in Common.PortInfoList)
+                    if (ports.Count == 0)
                     {
-                        GCommon.Logger.Debug($"[{Common.LoggerHead}]->自动释放Rtp端口->{JsonHelper.ToJson(pi)}");
-                        lock (Common._getRtpPortLock)
+                        foreach (var pi in Common.PortInfoList)
                         {
-                            var portUsed = Common.PortInfoList.FindLast(x => x.Port.Equals(pi.Port));
-                            if (portUsed != null)
+                            lock (Common._getRtpPortLock)
                             {
-                                portUsed.Useed = false;
-                                GCommon.Logger.Info($"[{Common.LoggerHead}]->释放rtp端口成功:{pi.Port}");
+                                var portUsed = Common.PortInfoList.FindLast(x => x.Port.Equals(pi.Port) && x.Useed);
+                                if (portUsed != null)
+                                {
+                                    portUsed.Useed = false;
+                                    GCommon.Logger.Info($"[{Common.LoggerHead}]->释放rtp端口成功:{pi.Port}");
+                                }
                             }
                         }
-
                     }
-                }
-                else
-                {
-                    foreach (var pi in Common.PortInfoList)
+                    else
                     {
-                        if (pi != null && pi.Useed && DateTime.Now >
-                            pi.DateTime.AddSeconds(Common.MediaServerInstance.AkStreamKeeperConfig.RtpPortCdTime))
+                        foreach (var pi in Common.PortInfoList)
                         {
-                          
-                            if (!ports.Contains(pi.Port))
+                            if (pi != null && pi.Useed && DateTime.Now >
+                                pi.DateTime.AddSeconds(Common.MediaServerInstance.AkStreamKeeperConfig.RtpPortCdTime))
                             {
-                                GCommon.Logger.Debug($"[{Common.LoggerHead}]->自动释放Rtp端口->{JsonHelper.ToJson(pi)}");
-                                ApiService.ReleaseRtpPort(pi.Port);
-                            }
-                            else 
-                            {
-                                lock (Common._getRtpPortLock)
+                                if (!ports.Contains(pi.Port))
                                 {
-                                    var portUsed = Common.PortInfoList.FindLast(x => x.Port.Equals(pi.Port));
-                                    if (portUsed != null)
+                                    GCommon.Logger.Debug($"[{Common.LoggerHead}]->自动释放Rtp端口->{JsonHelper.ToJson(pi)}");
+                                    ApiService.ReleaseRtpPort(pi.Port);
+                                }
+                                else
+                                {
+                                    lock (Common._getRtpPortLock)
                                     {
-                                        GCommon.Logger.Debug($"[{Common.LoggerHead}]->更新Rtp端口激活状态时间->{JsonHelper.ToJson(portUsed)}");
-                                        portUsed.DateTime = DateTime.Now; //更新端口，目前正在使用的时间
-                                        
+                                        var portUsed = Common.PortInfoList.FindLast(x => x.Port.Equals(pi.Port));
+                                        if (portUsed != null)
+                                        {
+                                            GCommon.Logger.Debug(
+                                                $"[{Common.LoggerHead}]->更新Rtp端口激活状态时间->{JsonHelper.ToJson(portUsed)}");
+                                            portUsed.DateTime = DateTime.Now; //更新端口，目前正在使用的时间
+                                        }
                                     }
                                 }
                             }
@@ -138,7 +163,6 @@ public class AutoRtpPortClean
                 }
             }
 
-            
             Thread.Sleep(1000 * 10);
         }
     }

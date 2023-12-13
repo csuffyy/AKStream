@@ -56,7 +56,7 @@ namespace LibCommon.Structs.GB28181.XML
             ns.Add("", "");
             var xmlSerializer = new XmlSerializer(typeof(T1));
             var stringBuilder = new StringBuilder();
-          
+
 
             using (var xmlWriter = XmlWriter.Create(new StringWriter(stringBuilder), new XmlWriterSettings
                    {
@@ -105,7 +105,7 @@ namespace LibCommon.Structs.GB28181.XML
                 object obj;
                 try
                 {
-                    obj = (T) s.Deserialize(r);
+                    obj = (T)s.Deserialize(r);
                 }
                 catch (Exception)
                 {
@@ -146,7 +146,7 @@ namespace LibCommon.Structs.GB28181.XML
             object obj;
             try
             {
-                obj = (T) s.Deserialize(sr);
+                obj = (T)s.Deserialize(sr);
             }
             catch
             {

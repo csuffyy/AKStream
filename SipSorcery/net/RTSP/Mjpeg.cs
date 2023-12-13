@@ -9,37 +9,37 @@
 // License: 
 /*
 This file came from Managed Media Aggregation, You can always find the latest version @ https://net7mma.codeplex.com/
-  
+
  Julius.Friedman@gmail.com / (SR. Software Engineer ASTI Transportation Inc. http://www.asti-trans.com)
 
-Permission is hereby granted, free of charge, 
- * to any person obtaining a copy of this software and associated documentation files (the "Software"), 
- * to deal in the Software without restriction, 
+Permission is hereby granted, free of charge,
+ * to any person obtaining a copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction,
  * including without limitation the rights to :
- * use, 
- * copy, 
- * modify, 
- * merge, 
- * publish, 
- * distribute, 
- * sublicense, 
- * and/or sell copies of the Software, 
+ * use,
+ * copy,
+ * modify,
+ * merge,
+ * publish,
+ * distribute,
+ * sublicense,
+ * and/or sell copies of the Software,
  * and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
- * 
- * 
+ *
+ *
  * JuliusFriedman@gmail.com should be contacted for further details.
 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. 
- * 
- * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
- * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, 
- * TORT OR OTHERWISE, 
- * ARISING FROM, 
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ *
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+ * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE,
+ * ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- * 
+ *
  * v//
  */
 //-----------------------------------------------------------------------------
@@ -126,7 +126,8 @@ namespace SIPSorcery.Net
         //static byte[] bits_ac_chrominance = { 0, 0, 2, 1, 2, 4, 4, 3, 4, 7, 5, 4, 4, 0, 1, 2, 0x77 };
         static byte[] bits_ac_chrominance = { 0, 2, 1, 2, 4, 4, 3, 4, 7, 5, 4, 4, 0, 1, 2, 0x77 };
 
-        static byte[] val_ac_chrominance = {
+        static byte[] val_ac_chrominance =
+        {
             0x00, 0x01, 0x02, 0x03, 0x11, 0x04, 0x05, 0x21,
             0x31, 0x06, 0x12, 0x41, 0x51, 0x07, 0x61, 0x71,
             0x13, 0x22, 0x32, 0x81, 0x08, 0x14, 0x42, 0x91,
@@ -153,55 +154,56 @@ namespace SIPSorcery.Net
         // The default 'luma' and 'chroma' quantizer tables, in zigzag order:
         static byte[] defaultQuantizers = new byte[]
         {
-           // luma table:
-           16, 11, 12, 14, 12, 10, 16, 14,
-           13, 14, 18, 17, 16, 19, 24, 40,
-           26, 24, 22, 22, 24, 49, 35, 37,
-           29, 40, 58, 51, 61, 60, 57, 51,
-           56, 55, 64, 72, 92, 78, 64, 68,
-           87, 69, 55, 56, 80, 109, 81, 87,
-           95, 98, 103, 104, 103, 62, 77, 113,
-           121, 112, 100, 120, 92, 101, 103, 99,
-           // chroma table:
-           17, 18, 18, 24, 21, 24, 47, 26,
-           26, 47, 99, 66, 56, 66, 99, 99,
-           99, 99, 99, 99, 99, 99, 99, 99,
-           99, 99, 99, 99, 99, 99, 99, 99,
-           99, 99, 99, 99, 99, 99, 99, 99,
-           99, 99, 99, 99, 99, 99, 99, 99,
-           99, 99, 99, 99, 99, 99, 99, 99,
-           99, 99, 99, 99, 99, 99, 99, 99
+            // luma table:
+            16, 11, 12, 14, 12, 10, 16, 14,
+            13, 14, 18, 17, 16, 19, 24, 40,
+            26, 24, 22, 22, 24, 49, 35, 37,
+            29, 40, 58, 51, 61, 60, 57, 51,
+            56, 55, 64, 72, 92, 78, 64, 68,
+            87, 69, 55, 56, 80, 109, 81, 87,
+            95, 98, 103, 104, 103, 62, 77, 113,
+            121, 112, 100, 120, 92, 101, 103, 99,
+            // chroma table:
+            17, 18, 18, 24, 21, 24, 47, 26,
+            26, 47, 99, 66, 56, 66, 99, 99,
+            99, 99, 99, 99, 99, 99, 99, 99,
+            99, 99, 99, 99, 99, 99, 99, 99,
+            99, 99, 99, 99, 99, 99, 99, 99,
+            99, 99, 99, 99, 99, 99, 99, 99,
+            99, 99, 99, 99, 99, 99, 99, 99,
+            99, 99, 99, 99, 99, 99, 99, 99
         };
 
-        static byte[] CreateJFIFHeader(uint type, uint width, uint height, ArraySegment<byte> tables, byte precision, ushort dri)
+        static byte[] CreateJFIFHeader(uint type, uint width, uint height, ArraySegment<byte> tables, byte precision,
+            ushort dri)
         {
             List<byte> result = new List<byte>();
             result.Add(Tags.Prefix);
             result.Add(Tags.StartOfInformation);
 
             result.Add(Tags.Prefix);
-            result.Add(Tags.AppFirst);//AppFirst
+            result.Add(Tags.AppFirst); //AppFirst
             result.Add(0x00);
-            result.Add(0x10);//length
+            result.Add(0x10); //length
             result.Add((byte)'J'); //Always equals "JFXX" (with zero following) (0x4A46585800)
             result.Add((byte)'F');
             result.Add((byte)'I');
             result.Add((byte)'F');
             result.Add(0x00);
 
-            result.Add(0x01);//Version Major
-            result.Add(0x01);//Version Minor
+            result.Add(0x01); //Version Major
+            result.Add(0x01); //Version Minor
 
-            result.Add(0x00);//Units
+            result.Add(0x00); //Units
 
-            result.Add(0x00);//Horizontal
+            result.Add(0x00); //Horizontal
             result.Add(0x01);
 
-            result.Add(0x00);//Vertical
+            result.Add(0x00); //Vertical
             result.Add(0x01);
 
-            result.Add(0x00);//No thumb
-            result.Add(0x00);//Thumb Data
+            result.Add(0x00); //No thumb
+            result.Add(0x00); //Thumb Data
 
             //Data Restart Invert val
             if (dri > 0)
@@ -214,10 +216,10 @@ namespace SIPSorcery.Net
 
             //Huffman Tables
             ushort huffmanLength = (ushort)(6 +
-                bits_dc_luminance.Length + val_dc.Length +
-                bits_dc_chrominance.Length + val_dc.Length +
-                bits_ac_luminance.Length + val_ac_luminance.Length +
-                bits_ac_chrominance.Length + val_ac_chrominance.Length);
+                                            bits_dc_luminance.Length + val_dc.Length +
+                                            bits_dc_chrominance.Length + val_dc.Length +
+                                            bits_ac_luminance.Length + val_ac_luminance.Length +
+                                            bits_ac_chrominance.Length + val_ac_chrominance.Length);
 
             result.Add(Tags.Prefix);
             result.Add(Tags.HuffmanTable);
@@ -230,7 +232,7 @@ namespace SIPSorcery.Net
 
             //Start Of Frame
             result.Add(Tags.Prefix);
-            result.Add(Tags.StartOfFrame);//SOF
+            result.Add(Tags.StartOfFrame); //SOF
             result.Add(0x00); //Length
             result.Add(0x11); // 17
             result.Add(0x08); //Bits Per Component
@@ -239,27 +241,27 @@ namespace SIPSorcery.Net
             result.Add((byte)(width >> 8)); //Width
             result.Add((byte)width);
 
-            result.Add(0x03);//Number of components
-            result.Add(0x01);//Component Number
+            result.Add(0x03); //Number of components
+            result.Add(0x01); //Component Number
             result.Add((byte)(type > 0 ? 0x22 : 0x21)); //Horizontal or Vertical Sample  
 
-            result.Add(0x00);//Matrix Number (Quant Table Id)?
-            result.Add(0x02);//Component Number
-            result.Add(0x11);//Horizontal or Vertical Sample
+            result.Add(0x00); //Matrix Number (Quant Table Id)?
+            result.Add(0x02); //Component Number
+            result.Add(0x11); //Horizontal or Vertical Sample
 
             //ToDo - Handle 16 Bit Precision
-            result.Add(0);//Matrix Number
+            result.Add(0); //Matrix Number
 
-            result.Add(0x03);//Component Number
-            result.Add(0x11);//Horizontal or Vertical Sample
+            result.Add(0x03); //Component Number
+            result.Add(0x11); //Horizontal or Vertical Sample
 
             //ToDo - Handle 16 Bit Precision
             //result.Add(1);//Matrix Number      
-            result.Add(0);//Matrix Number      
+            result.Add(0); //Matrix Number      
 
             //Start Of Scan
             result.Add(Tags.Prefix);
-            result.Add(Tags.StartOfScan);//Marker SOS
+            result.Add(Tags.StartOfScan); //Marker SOS
             result.Add(0x00); //Length
             result.Add(0x0c); //Length - 12
             result.Add(0x03); //Number of components
@@ -300,18 +302,26 @@ namespace SIPSorcery.Net
                 {
                     //Clamp with Min, Max
                     //Luma
-                    resultTables[i] = (byte)Math.Min(Math.Max((defaultQuantizers[i] * q + 50) / 100, 1), byte.MaxValue);
+                    resultTables[i] =
+                        (byte)Math.Min(Math.Max((defaultQuantizers[i] * q + 50) / 100, 1), byte.MaxValue);
                     //Chroma
-                    resultTables[j] = (byte)Math.Min(Math.Max((defaultQuantizers[j] * q + 50) / 100, 1), byte.MaxValue);
+                    resultTables[j] =
+                        (byte)Math.Min(Math.Max((defaultQuantizers[j] * q + 50) / 100, 1), byte.MaxValue);
                 }
                 else
                 {
                     //Luma
-                    BitConverter.GetBytes(NetConvert.DoReverseEndian((ushort)Math.Min(Math.Max((defaultQuantizers[i] * q + 50) / 100, 1), byte.MaxValue))).CopyTo(resultTables, i);
+                    BitConverter
+                        .GetBytes(NetConvert.DoReverseEndian(
+                            (ushort)Math.Min(Math.Max((defaultQuantizers[i] * q + 50) / 100, 1), byte.MaxValue)))
+                        .CopyTo(resultTables, i);
                     i++;
 
                     //Chroma
-                    BitConverter.GetBytes(NetConvert.DoReverseEndian((ushort)Math.Min(Math.Max((defaultQuantizers[j] * q + 50) / 100, 1), byte.MaxValue))).CopyTo(resultTables, j);
+                    BitConverter
+                        .GetBytes(NetConvert.DoReverseEndian(
+                            (ushort)Math.Min(Math.Max((defaultQuantizers[j] * q + 50) / 100, 1), byte.MaxValue)))
+                        .CopyTo(resultTables, j);
                     j++;
                 }
             }
@@ -343,7 +353,7 @@ namespace SIPSorcery.Net
 
             result[0] = Tags.Prefix;
             result[1] = Tags.QuantizationTable;
-            result[2] = 0;//Len
+            result[2] = 0; //Len
             result[3] = (byte)(tableSize + 3);
             result[4] = (byte)(precision << 4 | 0); // Precision and TableId
 
@@ -354,9 +364,9 @@ namespace SIPSorcery.Net
             {
                 result[tableSize + 5] = Tags.Prefix;
                 result[tableSize + 6] = Tags.QuantizationTable;
-                result[tableSize + 7] = 0;//Len
+                result[tableSize + 7] = 0; //Len
                 result[tableSize + 8] = (byte)(tableSize + 3);
-                result[tableSize + 9] = (byte)(precision << 4 | 1);//Precision 0, and table Id
+                result[tableSize + 9] = (byte)(precision << 4 | 1); //Precision 0, and table Id
 
                 //Second Table. Type - Chrominance usually when two
                 Array.Copy(tables.Array, tables.Offset + tableSize, result, 10 + tableSize, tableSize);
@@ -373,7 +383,7 @@ namespace SIPSorcery.Net
             //result.Add(0x00); //Length
             //result.Add((byte)(3 + codeLens.Length + symbols.Length)); //Length
             result.Add((byte)((tableClass << 4) | tableID)); //Id
-            result.AddRange(codeLens);//Data
+            result.AddRange(codeLens); //Data
             result.AddRange(symbols);
             return result.ToArray();
         }
@@ -417,7 +427,8 @@ namespace SIPSorcery.Net
                     //Decode RtpJpeg Header
 
                     TypeSpecific = (uint)(packet.Payload[offset++]);
-                    FragmentOffset = (uint)(packet.Payload[offset++] << 16 | packet.Payload[offset++] << 8 | packet.Payload[offset++]);
+                    FragmentOffset = (uint)(packet.Payload[offset++] << 16 | packet.Payload[offset++] << 8 |
+                                            packet.Payload[offset++]);
 
                     #region RFC2435 -  The Type Field
 
@@ -504,17 +515,22 @@ namespace SIPSorcery.Net
                     type = Type & 1;
                     if (type > 3 || type > 6)
                     {
-                        throw new ArgumentException("Type numbers 2-5 are reserved and SHOULD NOT be used.  Applications on RFC 2035 should be updated to indicate the presence of restart markers with type 64 or 65 and the Restart Marker header.");
+                        throw new ArgumentException(
+                            "Type numbers 2-5 are reserved and SHOULD NOT be used.  Applications on RFC 2035 should be updated to indicate the presence of restart markers with type 64 or 65 and the Restart Marker header.");
                     }
 
                     Quality = (uint)packet.Payload[offset++];
-                    Width = (uint)(packet.Payload[offset++] * 8); // This should have been 128 or > and the standard would have worked for all resolutions
-                    Height = (uint)(packet.Payload[offset++] * 8);// Now in certain highres profiles you will need an OnVif extension before the RtpJpeg Header
-                                                                  //It is worth noting Rtp does not care what you send and more tags such as comments and or higher resolution pictures may be sent and these values will simply be ignored.
+                    Width = (uint)(packet.Payload[offset++] *
+                                   8); // This should have been 128 or > and the standard would have worked for all resolutions
+                    Height = (uint)(packet.Payload[offset++] *
+                                    8); // Now in certain highres profiles you will need an OnVif extension before the RtpJpeg Header
+                    //It is worth noting Rtp does not care what you send and more tags such as comments and or higher resolution pictures may be sent and these values will simply be ignored.
 
                     if (Width == 0 || Height == 0)
                     {
-                        logger.LogWarning("ProcessMjpegFrame could not determine either the width or height of the jpeg frame (width={0}, height={1}).", Width, Height);
+                        logger.LogWarning(
+                            "ProcessMjpegFrame could not determine either the width or height of the jpeg frame (width={0}, height={1}).",
+                            Width, Height);
                     }
 
                     //Restart Interval 64 - 127
@@ -600,7 +616,8 @@ namespace SIPSorcery.Net
                             }
                             else // Create it from the Quality
                             {
-                                tables = new ArraySegment<byte>(CreateQuantizationTables(Quality, type, PrecisionTable));
+                                tables = new ArraySegment<byte>(CreateQuantizationTables(Quality, type,
+                                    PrecisionTable));
                             }
                         }
                         else // Create from the Quality

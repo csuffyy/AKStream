@@ -79,7 +79,8 @@ namespace SIPSorcery.Net
         {
             if (!SupportedErrorCauses.Contains(causeCode))
             {
-                throw new ApplicationException($"SCTP error struct should not be used for {causeCode}, use the specific error type.");
+                throw new ApplicationException(
+                    $"SCTP error struct should not be used for {causeCode}, use the specific error type.");
             }
 
             CauseCode = causeCode;
@@ -157,6 +158,7 @@ namespace SIPSorcery.Net
                     valPosn += 2;
                 }
             }
+
             return len;
         }
     }
@@ -223,6 +225,7 @@ namespace SIPSorcery.Net
             {
                 Buffer.BlockCopy(UnresolvableAddress, 0, buffer, posn + 4, UnresolvableAddress.Length);
             }
+
             return len;
         }
     }
@@ -260,6 +263,7 @@ namespace SIPSorcery.Net
             {
                 Buffer.BlockCopy(UnrecognizedChunk, 0, buffer, posn + 4, UnrecognizedChunk.Length);
             }
+
             return len;
         }
     }
@@ -301,6 +305,7 @@ namespace SIPSorcery.Net
             {
                 Buffer.BlockCopy(UnrecognizedParameters, 0, buffer, posn + 4, UnrecognizedParameters.Length);
             }
+
             return len;
         }
     }
@@ -369,6 +374,7 @@ namespace SIPSorcery.Net
             {
                 Buffer.BlockCopy(NewAddressTLVs, 0, buffer, posn + 4, NewAddressTLVs.Length);
             }
+
             return len;
         }
     }
@@ -391,7 +397,8 @@ namespace SIPSorcery.Net
 
         public ushort GetErrorCauseLength(bool padded)
         {
-            ushort len = (ushort)(4 + ((!string.IsNullOrEmpty(AbortReason)) ? Encoding.UTF8.GetByteCount(AbortReason) : 0));
+            ushort len =
+                (ushort)(4 + ((!string.IsNullOrEmpty(AbortReason)) ? Encoding.UTF8.GetByteCount(AbortReason) : 0));
             return padded ? SctpPadding.PadTo4ByteBoundary(len) : len;
         }
 
@@ -405,6 +412,7 @@ namespace SIPSorcery.Net
                 var reasonBuffer = Encoding.UTF8.GetBytes(AbortReason);
                 Buffer.BlockCopy(reasonBuffer, 0, buffer, posn + 4, reasonBuffer.Length);
             }
+
             return len;
         }
     }
@@ -428,7 +436,9 @@ namespace SIPSorcery.Net
 
         public ushort GetErrorCauseLength(bool padded)
         {
-            ushort len = (ushort)(4 + ((!string.IsNullOrEmpty(AdditionalInformation)) ? Encoding.UTF8.GetByteCount(AdditionalInformation) : 0));
+            ushort len = (ushort)(4 + ((!string.IsNullOrEmpty(AdditionalInformation))
+                ? Encoding.UTF8.GetByteCount(AdditionalInformation)
+                : 0));
             return padded ? SctpPadding.PadTo4ByteBoundary(len) : len;
         }
 
@@ -442,6 +452,7 @@ namespace SIPSorcery.Net
                 var reasonBuffer = Encoding.UTF8.GetBytes(AdditionalInformation);
                 Buffer.BlockCopy(reasonBuffer, 0, buffer, posn + 4, reasonBuffer.Length);
             }
+
             return len;
         }
     }

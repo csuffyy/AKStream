@@ -104,11 +104,13 @@ namespace SIPSorcery.Net
         {
             if (packet.Length < MIN_PACKET_SIZE)
             {
-                throw new ApplicationException("The packet did not contain the minimum number of bytes for an RTCP SDES packet.");
+                throw new ApplicationException(
+                    "The packet did not contain the minimum number of bytes for an RTCP SDES packet.");
             }
             else if (packet[8] != CNAME_ID)
             {
-                throw new ApplicationException("The RTCP report packet did not have the required CNAME type field set correctly.");
+                throw new ApplicationException(
+                    "The RTCP report packet did not have the required CNAME type field set correctly.");
             }
 
             Header = new RTCPHeader(packet);
@@ -134,7 +136,9 @@ namespace SIPSorcery.Net
         public byte[] GetBytes()
         {
             byte[] cnameBytes = Encoding.UTF8.GetBytes(CNAME);
-            byte[] buffer = new byte[RTCPHeader.HEADER_BYTES_LENGTH + GetPaddedLength(cnameBytes.Length)]; // Array automatically initialised with 0x00 values.
+            byte[] buffer =
+                new byte[RTCPHeader.HEADER_BYTES_LENGTH +
+                         GetPaddedLength(cnameBytes.Length)]; // Array automatically initialised with 0x00 values.
             Header.SetLength((ushort)(buffer.Length / 4 - 1));
 
             Buffer.BlockCopy(Header.GetBytes(), 0, buffer, 0, RTCPHeader.HEADER_BYTES_LENGTH);

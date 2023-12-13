@@ -59,7 +59,8 @@ namespace SIPSorcery.Net
         public List<uint> DuplicateTSN = new List<uint>();
 
         private SctpSackChunk() : base(SctpChunkType.SACK)
-        { }
+        {
+        }
 
         /// <summary>
         /// Creates a new SACK chunk.
@@ -79,10 +80,10 @@ namespace SIPSorcery.Net
         /// <returns>The length of the chunk.</returns>
         public override ushort GetChunkLength(bool padded)
         {
-            var len = (ushort)(SCTP_CHUNK_HEADER_LENGTH + 
-                FIXED_PARAMETERS_LENGTH +
-                GapAckBlocks.Count * GAP_REPORT_LENGTH +
-                DuplicateTSN.Count * DUPLICATE_TSN_LENGTH);
+            var len = (ushort)(SCTP_CHUNK_HEADER_LENGTH +
+                               FIXED_PARAMETERS_LENGTH +
+                               GapAckBlocks.Count * GAP_REPORT_LENGTH +
+                               DuplicateTSN.Count * DUPLICATE_TSN_LENGTH);
 
             // Guaranteed to be in a 4 byte boundary so no need to pad.
             return len;
@@ -115,7 +116,7 @@ namespace SIPSorcery.Net
                 reportPosn += GAP_REPORT_LENGTH;
             }
 
-            foreach(var dupTSN in DuplicateTSN)
+            foreach (var dupTSN in DuplicateTSN)
             {
                 NetConvert.ToBuffer(dupTSN, buffer, reportPosn);
                 reportPosn += DUPLICATE_TSN_LENGTH;
@@ -143,7 +144,7 @@ namespace SIPSorcery.Net
 
             int reportPosn = startPosn + FIXED_PARAMETERS_LENGTH;
 
-            for (int i=0; i < numGapAckBlocks; i++)
+            for (int i = 0; i < numGapAckBlocks; i++)
             {
                 ushort start = NetConvert.ParseUInt16(buffer, reportPosn);
                 ushort end = NetConvert.ParseUInt16(buffer, reportPosn + 2);
@@ -151,7 +152,7 @@ namespace SIPSorcery.Net
                 reportPosn += GAP_REPORT_LENGTH;
             }
 
-            for(int j=0; j < numDuplicateTSNs; j++)
+            for (int j = 0; j < numDuplicateTSNs; j++)
             {
                 sackChunk.DuplicateTSN.Add(NetConvert.ParseUInt32(buffer, reportPosn));
                 reportPosn += DUPLICATE_TSN_LENGTH;

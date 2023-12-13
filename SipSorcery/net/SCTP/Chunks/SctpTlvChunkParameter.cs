@@ -121,10 +121,11 @@ namespace SIPSorcery.Net
         /// how it should handle it.
         /// </summary>
         public SctpUnrecognisedParameterActions UnrecognisedAction =>
-            (SctpUnrecognisedParameterActions) (ParameterType >> 14 & 0x03);
+            (SctpUnrecognisedParameterActions)(ParameterType >> 14 & 0x03);
 
         protected SctpTlvChunkParameter()
-        { }
+        {
+        }
 
         /// <summary>
         /// Creates a new chunk parameter instance.
@@ -144,7 +145,7 @@ namespace SIPSorcery.Net
         public virtual ushort GetParameterLength(bool padded)
         {
             ushort len = (ushort)(SCTP_PARAMETER_HEADER_LENGTH
-                + (ParameterValue == null ? 0 : ParameterValue.Length));
+                                  + (ParameterValue == null ? 0 : ParameterValue.Length));
 
             return (padded) ? SctpPadding.PadTo4ByteBoundary(len) : len;
         }
@@ -210,7 +211,7 @@ namespace SIPSorcery.Net
                 int bytesRequired = paramLen;
                 int bytesAvailable = buffer.Length - posn;
                 throw new ApplicationException($"The SCTP chunk parameter buffer was too short. " +
-                    $"Required {bytesRequired} bytes but only {bytesAvailable} available.");
+                                               $"Required {bytesRequired} bytes but only {bytesAvailable} available.");
             }
 
             return paramLen;
@@ -226,7 +227,8 @@ namespace SIPSorcery.Net
         {
             if (buffer.Length < posn + SCTP_PARAMETER_HEADER_LENGTH)
             {
-                throw new ApplicationException("Buffer did not contain the minimum of bytes for an SCTP TLV chunk parameter.");
+                throw new ApplicationException(
+                    "Buffer did not contain the minimum of bytes for an SCTP TLV chunk parameter.");
             }
 
             var tlvParam = new SctpTlvChunkParameter();
@@ -237,6 +239,7 @@ namespace SIPSorcery.Net
                 Buffer.BlockCopy(buffer, posn + SCTP_PARAMETER_HEADER_LENGTH, tlvParam.ParameterValue,
                     0, tlvParam.ParameterValue.Length);
             }
+
             return tlvParam;
         }
     }

@@ -37,7 +37,7 @@
 * @author Damian Minkov
 * @author Boris Grozev
 * @author Lyubomir Marinov
-* 
+*
 */
 
 using System;
@@ -47,8 +47,8 @@ namespace SIPSorcery.Net
 {
     public class RawPacket
     {
-
         public const int RTP_PACKET_MAX_SIZE = 8192;
+
         /**
          * The size of the extension header as defined by RFC 3550.
          */
@@ -77,7 +77,7 @@ namespace SIPSorcery.Net
          * <tt>byte</tt> array buffer.
          *
          * @param buffer the <tt>byte</tt> array to be the buffer of the new
-         * instance 
+         * instance
          * @param offset the offset in <tt>buffer</tt> at which the actual data to
          * be represented by the new instance starts
          * @param length the number of <tt>byte</tt>s in <tt>buffer</tt> which
@@ -172,6 +172,7 @@ namespace SIPSorcery.Net
 
                 length = (byteLength | byteLength2 * 4);
             }
+
             return length;
         }
 
@@ -198,6 +199,7 @@ namespace SIPSorcery.Net
             {
                 length += EXT_HEADER_SIZE + GetExtensionLength();
             }
+
             return length;
         }
 
@@ -223,6 +225,7 @@ namespace SIPSorcery.Net
             {
                 return 0;
             }
+
             buffer.Position = this.buffer.Length - 1;
             return this.buffer.ReadByte();
         }
@@ -356,9 +359,9 @@ namespace SIPSorcery.Net
         {
             buffer.Position = off;
             return ((buffer.ReadByte() & 0xff) << 24) |
-                    ((buffer.ReadByte() & 0xff) << 16) |
-                    ((buffer.ReadByte() & 0xff) << 8) |
-                    ((buffer.ReadByte() & 0xff));
+                   ((buffer.ReadByte() & 0xff) << 16) |
+                   ((buffer.ReadByte() & 0xff) << 8) |
+                   ((buffer.ReadByte() & 0xff));
         }
 
         /**
@@ -384,7 +387,7 @@ namespace SIPSorcery.Net
         /**
          * Read a byte region from specified offset in the RTP packet and with
          * specified length into a given buffer
-         * 
+         *
          * @param off
          *            start offset in the RTP packet of the region to be read
          * @param len
@@ -445,6 +448,7 @@ namespace SIPSorcery.Net
             {
                 newLimit = 0;
             }
+
             this.buffer.SetLength(newLimit);
         }
     }

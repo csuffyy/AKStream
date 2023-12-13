@@ -73,15 +73,15 @@ namespace SIPSorcery.Sys
         /// <returns>A UInt64 value.</returns>
         public static ulong ParseUInt64(byte[] buffer, int posn)
         {
-            return 
-                 (ulong)buffer[posn] << 56 |
-                 (ulong)buffer[posn + 1] << 48 |
-                 (ulong)buffer[posn + 2] << 40 |
-                 (ulong)buffer[posn + 3] << 32 |
-                 (ulong)buffer[posn + 4] << 24 |
-                 (ulong)buffer[posn + 5] << 16 |
-                 (ulong)buffer[posn + 6] << 8 |
-                 (ulong)buffer[posn + 7];
+            return
+                (ulong)buffer[posn] << 56 |
+                (ulong)buffer[posn + 1] << 48 |
+                (ulong)buffer[posn + 2] << 40 |
+                (ulong)buffer[posn + 3] << 32 |
+                (ulong)buffer[posn + 4] << 24 |
+                (ulong)buffer[posn + 5] << 16 |
+                (ulong)buffer[posn + 6] << 8 |
+                (ulong)buffer[posn + 7];
         }
 
         /// <summary>
@@ -92,7 +92,7 @@ namespace SIPSorcery.Sys
         /// <param name="posn">The start position in the buffer to write the value at.</param>
         public static void ToBuffer(ushort val, byte[] buffer, int posn)
         {
-            if(buffer.Length < posn + 2)
+            if (buffer.Length < posn + 2)
             {
                 throw new ApplicationException("Buffer was too short for ushort ToBuffer.");
             }

@@ -45,7 +45,8 @@ namespace SIPSorcery.Sys
         public static string GetSocketString(IPEndPoint endPoint)
         {
             string format = (endPoint.Address.AddressFamily == AddressFamily.InterNetworkV6) ? "[{0}]:{1}" : "{0}:{1}";
-            return string.Format(format, endPoint.Address.ToString(), endPoint.Port.ToString(NumberFormatInfo.InvariantInfo));
+            return string.Format(format, endPoint.Address.ToString(),
+                endPoint.Port.ToString(NumberFormatInfo.InvariantInfo));
         }
 
         /// <summary>
@@ -58,7 +59,7 @@ namespace SIPSorcery.Sys
         /// <returns>Returns true if the string could be successfully parsed as an IPv4 or IPv6 end point. False if not.</returns>
         public static bool TryParseIPEndPoint(string s, out IPEndPoint result)
         {
-            int addressLength = s.Length;  // If there's no port then send the entire string to the address parser
+            int addressLength = s.Length; // If there's no port then send the entire string to the address parser
             int lastColonPos = s.LastIndexOf(':');
 
             // Look to see if this is an IPv6 address with a port.
@@ -79,7 +80,8 @@ namespace SIPSorcery.Sys
             {
                 uint port = 0;
                 if (addressLength == s.Length ||
-                    (uint.TryParse(s.Substring(addressLength + 1), NumberStyles.None, CultureInfo.InvariantCulture, out port) && port <= MaxPort))
+                    (uint.TryParse(s.Substring(addressLength + 1), NumberStyles.None, CultureInfo.InvariantCulture,
+                        out port) && port <= MaxPort))
                 {
                     result = new IPEndPoint(address, (int)port);
                     return true;
@@ -289,6 +291,7 @@ namespace SIPSorcery.Sys
                     host = ipaddr.ToString();
                     port = -1;
                 }
+
                 rc = true;
             }
             else
@@ -308,7 +311,7 @@ namespace SIPSorcery.Sys
 
             if (defaultport != -1 &&
                 (defaultport < IPEndPoint.MinPort
-                || defaultport > IPEndPoint.MaxPort))
+                 || defaultport > IPEndPoint.MaxPort))
             {
                 throw new ArgumentException(string.Format("Invalid default port '{0}'", defaultport));
             }
@@ -376,8 +379,8 @@ namespace SIPSorcery.Sys
             int port;
 
             if (!int.TryParse(p, out port)
-             || port < IPEndPoint.MinPort
-             || port > IPEndPoint.MaxPort)
+                || port < IPEndPoint.MinPort
+                || port > IPEndPoint.MaxPort)
             {
                 throw new FormatException(string.Format("Invalid end point port '{0}'", p));
             }
@@ -395,6 +398,7 @@ namespace SIPSorcery.Sys
                 {
                     throw new ArgumentException(string.Format("Host not found: {0}", p));
                 }
+
                 return hosts[0];
             }
             catch

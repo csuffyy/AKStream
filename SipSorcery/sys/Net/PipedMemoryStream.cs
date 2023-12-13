@@ -27,7 +27,8 @@ namespace SIPSorcery.Sys
         private bool _isClosed = false;
 
         internal PipedMemoryStream()
-        { }
+        {
+        }
 
         public void Close()
         {

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -21,6 +22,273 @@ namespace LibCommon
     /// </summary>
     public static class UtilsHelper
     {
+        /// <summary>
+        /// 查找优先使用的config文件
+        /// Config文件名同名，但后缀包含.local的将被优先使用
+        /// 比如：AKStreamKeeperConfig.json这个配置文件，如果在同目录下发现有AKStreamKeeperConfig.json.local文件
+        /// 将被优先使用
+        /// 不存在.lcaol文件，将使用本文件，如上述例子将使用AKStreamKeeperConfig.json文件
+        /// </summary>
+        /// <param name="configPath"></param>
+        /// <returns></returns>
+        public static string FindPreferredConfigFile(string configPath)
+        {
+            var path = Path.GetDirectoryName(configPath);
+            var fileName = Path.GetFileName(configPath);
+            var isWindows = false;
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                path = path.Trim().TrimEnd('\\');
+                isWindows = true;
+            }
+            else
+            {
+                path = path.Trim().TrimEnd('/');
+            }
+
+            if (Directory.Exists(path) && File.Exists(configPath))
+            {
+                if (isWindows)
+                {
+                    if (File.Exists($"{path}\\{fileName}.local"))
+                    {
+                        return $"{path}\\{fileName}.local";
+                    }
+                }
+                else
+                {
+                    if (File.Exists($"{path}/{fileName}.local"))
+                    {
+                        return $"{path}/{fileName}.local";
+                    }
+                }
+            }
+
+            return configPath;
+        }
+
+        /// <summary>
+        /// 移除bom头
+        /// </summary>
+        /// <param name="filePath"></param>
+        /// <returns></returns>
+        public static bool WithOutBomHeader(string filePath)
+        {
+            string config = File.ReadAllText(filePath);
+            var utf8WithoutBom = new UTF8Encoding(false); //使用构造函数布尔参数指定是否含BOM头，示例false为不含。
+            using (var sink = new StreamWriter(filePath, false, utf8WithoutBom))
+            {
+                sink.WriteLine(config);
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// 是否有bom头
+        /// </summary>
+        /// <param name="bs"></param>
+        /// <returns></returns>
+        public static bool IsBomHeader(byte[] bs)
+        {
+            int len = bs.Length;
+            if (len >= 3 && bs[0] == 0xEF && bs[1] == 0xBB && bs[2] == 0xBF)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+
+        /// <summary>
+        /// 目录是否为外部挂载，并且可写状态
+        /// </summary>
+        /// <param name="dir"></param>
+        /// <returns>
+        ///  0：挂载并可写
+        ///  -1:未挂载
+        /// -2:挂载但不可写
+        /// </returns>
+        public static int DirAreMounttedAndWriteableForLinux(string dir)
+        {
+            #region 获取挂载列表
+
+            ProcessHelper ps = new ProcessHelper();
+            List<Dictionary<string, string>> dirDevList = new List<Dictionary<string, string>>();
+            string std;
+            string err;
+            try
+            {
+                var cmd = " -h " + dir;
+                ps.RunProcess("/bin/df", cmd, 1000, out std, out err);
+                if (!string.IsNullOrEmpty(std))
+                {
+                    string[] tmpStrArr = std.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                    if (tmpStrArr != null && tmpStrArr.Length > 0)
+                    {
+                        foreach (var str in tmpStrArr)
+                        {
+                            if (str.ToLower().Trim().Contains("filesystem") || str.ToLower().Trim().Contains("size") ||
+                                str.ToLower().Trim().Contains("mount"))
+                            {
+                                continue;
+                            }
+
+                            if (str.Trim().ToLower().StartsWith("df:")) //如果报错，则说明没挂载
+                            {
+                                return -1;
+                            }
+
+                            string driverName = "";
+                            string rootPath = "";
+                            if (str.Trim().ToLower().StartsWith("/dev/sd"))
+                            {
+                                var tmpStrArr2 = str.Split(" ", StringSplitOptions.RemoveEmptyEntries);
+                                if (tmpStrArr2 != null && tmpStrArr2.Length >= 6)
+                                {
+                                    driverName = tmpStrArr2[0];
+                                    rootPath = tmpStrArr2[5];
+                                }
+
+                                if (string.IsNullOrEmpty(rootPath) || string.IsNullOrEmpty(driverName))
+                                {
+                                    return -1;
+                                }
+
+                                try
+                                {
+                                    File.WriteAllText(dir.TrimEnd('/') + "/check.txt", "ok");
+                                    var tmp = File.ReadAllText(dir.TrimEnd('/') + "/check.txt");
+                                    if (tmp.Trim().Equals("ok"))
+                                    {
+                                        File.Delete(dir.TrimEnd('/') + "/check.txt");
+                                        return 0;
+                                    }
+                                }
+                                catch
+                                {
+                                    return -2;
+                                }
+
+                                return 0;
+                            }
+                        }
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(err))
+                {
+                    string[] tmpStrArr = err.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                    if (tmpStrArr != null && tmpStrArr.Length > 0)
+                    {
+                        foreach (var str in tmpStrArr)
+                        {
+                            if (str.ToLower().Trim().Contains("filesystem") || str.ToLower().Trim().Contains("size") ||
+                                str.ToLower().Trim().Contains("mount"))
+                            {
+                                continue;
+                            }
+
+                            if (str.Trim().ToLower().StartsWith("df:")) //如果报错，则说明没挂载
+                            {
+                                return -1;
+                            }
+
+                            string driverName = "";
+                            string rootPath = "";
+                            if (str.Trim().ToLower().StartsWith("/dev/sd"))
+                            {
+                                var tmpStrArr2 = str.Split(" ", StringSplitOptions.RemoveEmptyEntries);
+                                if (tmpStrArr2 != null && tmpStrArr2.Length >= 6)
+                                {
+                                    driverName = tmpStrArr2[0];
+                                    rootPath = tmpStrArr2[5];
+                                }
+
+                                if (string.IsNullOrEmpty(rootPath) || string.IsNullOrEmpty(driverName))
+                                {
+                                    return -1;
+                                }
+
+                                try
+                                {
+                                    File.WriteAllText(dir.TrimEnd('/') + "/check.txt", "ok");
+                                    var tmp = File.ReadAllText(dir.TrimEnd('/') + "/check.txt");
+                                    if (tmp.Trim().Equals("ok"))
+                                    {
+                                        File.Delete(dir.TrimEnd('/') + "/check.txt");
+                                        return 0;
+                                    }
+                                }
+                                catch
+                                {
+                                    return -2;
+                                }
+
+                                return 0;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+
+            #endregion
+
+            return -1;
+        }
+
+
+        /// <summary>
+        /// 是否为ushort类型
+        /// </summary>
+        /// <param name="str"></param>
+        /// <returns></returns>
+        public static bool IsUShort(string str)
+        {
+            try
+            {
+                int i = Convert.ToUInt16(str);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 是否整数
+        /// </summary>
+        /// <param name="str"></param>
+        /// <returns></returns>
+        public static bool IsInteger(string str)
+        {
+            try
+            {
+                int i = Convert.ToInt32(str);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 是否浮点数
+        /// </summary>
+        /// <param name="str"></param>
+        /// <returns></returns>
+        public static bool IsFloat(string str)
+        {
+            string regextext = @"^\d+\.\d+$";
+            Regex regex = new Regex(regextext, RegexOptions.None);
+            return regex.IsMatch(str);
+        }
 
         /// <summary>
         /// 为字符串添加引号
@@ -29,8 +297,20 @@ namespace LibCommon
         /// <returns></returns>
         public static string AddQuote(string str)
         {
-            return $"\"{str.Trim()}\"";
+            switch (ORMHelper.DBType.Trim().ToLower())
+            {
+                case "mysql":
+                    return $"`{str.Trim()}`";
+                    break;
+                case "postgresql":
+                    return $"\"{str.Trim()}\"";
+                    break;
+                default:
+                    return $"`{str.Trim()}`";
+                    break;
+            }
         }
+
         /// <summary>
         /// 获取启动时传入参数列表
         /// </summary>
@@ -45,13 +325,14 @@ namespace LibCommon
                 {
                     if (!string.IsNullOrEmpty(args[i + 1].Trim()))
                     {
-                        tmpReturn.Add(new KeyValuePair<string,string>(args[i].Trim(),args[i+1].Trim()));
+                        tmpReturn.Add(new KeyValuePair<string, string>(args[i].Trim(), args[i + 1].Trim()));
                     }
                 }
             }
+
             return tmpReturn;
         }
-        
+
         /// <summary>
         /// 按指定数量对List分组
         /// </summary>
@@ -69,7 +350,7 @@ namespace LibCommon
 
             return listGroup;
         }
-        
+
         /// <summary>
         /// 日期转long 
         /// </summary>
@@ -103,7 +384,7 @@ namespace LibCommon
                 || tmp.Contains("network is down")
                 || tmp.Contains("no route")
                 || tmp.Contains("connection refused")
-            )
+               )
             {
                 return true;
             }
@@ -284,8 +565,7 @@ namespace LibCommon
             try
             {
                 FileStream file = new FileStream(fileName, FileMode.Open, FileAccess.Read);
-                MD5 md5 = new MD5CryptoServiceProvider();
-                byte[] retVal = md5.ComputeHash(file);
+                byte[] retVal = MD5.Create().ComputeHash(file);
                 file.Close();
                 StringBuilder sb = new StringBuilder();
                 for (int i = 0; i < retVal.Length; i++)
@@ -302,6 +582,26 @@ namespace LibCommon
         }
 
         /// <summary>
+        /// 获取MD5加密码值,用于和zlm交互
+        /// </summary>
+        /// <param name="str"></param>
+        /// <returns></returns>
+        public static string Md5New(string source)
+
+        {
+            string rule = "";
+            MD5 md5 = MD5.Create();
+            byte[] s = md5.ComputeHash(Encoding.UTF8.GetBytes(source));
+            // 通过使用循环，将字节类型的数组转换为字符串，此字符串是常规字符格式化所得
+            for (int i = 0; i < s.Length; i++)
+            {
+                rule = rule + s[i].ToString("x2"); // 将得到的字符串使用十六进制类型格式。格式后的字符是小写的字母，如果使用大写（X）则格式后的字符是大写字符 
+            }
+
+            return rule;
+        }
+
+        /// <summary>
         /// 获取MD5加密码值
         /// </summary>
         /// <param name="str"></param>
@@ -310,11 +610,9 @@ namespace LibCommon
         {
             try
             {
-                MD5CryptoServiceProvider md5 = new MD5CryptoServiceProvider();
                 byte[] bytValue, bytHash;
                 bytValue = Encoding.UTF8.GetBytes(str);
-                bytHash = md5.ComputeHash(bytValue);
-                md5.Clear();
+                bytHash = MD5.Create().ComputeHash(bytValue);
                 string sTemp = "";
                 for (int i = 0; i < bytHash.Length; i++)
                 {
@@ -341,7 +639,7 @@ namespace LibCommon
         {
             var xmlSerializer = new XmlSerializer(typeof(T));
 
-            return (T) xmlSerializer.Deserialize(xmlBody.CreateReader());
+            return (T)xmlSerializer.Deserialize(xmlBody.CreateReader());
         }
 
         /// <summary>
@@ -354,8 +652,7 @@ namespace LibCommon
             return r.Next(1, ushort.MaxValue);
         }
 
-        
-        
+
         /// <summary>
         /// 通过mac地址获取ip地址
         /// </summary>
@@ -509,6 +806,26 @@ namespace LibCommon
             }
         }
 
+        private static bool IsMatchex(string expression, string str)
+        {
+            Regex reg = new Regex(expression);
+            if (string.IsNullOrEmpty(str))
+                return false;
+            return reg.IsMatch(str);
+        }
+
+        /// <summary>
+        /// 是否为域名
+        /// </summary>
+        /// <param name="str"></param>
+        /// <returns></returns>
+        public static bool IsDomain(string str)
+        {
+            string pattern = @"^[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+$";
+            return IsMatchex(pattern, str);
+        }
+
+
         /// <summary>
         /// 是否rtsp地址
         /// </summary>
@@ -518,7 +835,7 @@ namespace LibCommon
         {
             try
             {
-                string Url = "^((rtsp|rtsps)?://)"
+                /*string Url = "^((rtsp|rtsps)?://)"
                              + "?(([0-9a-zA-Z_!~*'().&=+$%-]+:)?[0-9a-zA-Z_!~*'().&=+$%-]+@)?" //rtsp的user@
                              + "(([0-9]{1,3}.){3}[0-9]{1,3}" // IP形式的URL- 199.194.52.184
                              + "|" // 允许IP和DOMAIN（域名）
@@ -529,7 +846,8 @@ namespace LibCommon
                              + "((/?)|" // a slash isn't required if there is no file name
                              + "(/[0-9a-zA-Z_!~*'().;?:@&=+$,%#-]+)+/?)"
                              + "[A-Za-z0-9_!~*'().;?:@&=+$,%#-]{4,40}$";
-                return Regex.IsMatch(str, Url, RegexOptions.IgnoreCase);
+                return Regex.IsMatch(str, Url, RegexOptions.IgnoreCase);*/
+                return !string.IsNullOrEmpty(str);
             }
             catch
             {
@@ -585,7 +903,7 @@ namespace LibCommon
         public static long GetTimeGoneMilliseconds(DateTime starttime, DateTime endtime)
         {
             TimeSpan ts = endtime.Subtract(starttime);
-            return (long) ts.TotalMilliseconds;
+            return (long)ts.TotalMilliseconds;
         }
 
         /// <summary>
@@ -675,9 +993,9 @@ namespace LibCommon
         /// 获取随机字符串
         /// </summary>
         /// <returns></returns>
-        public static string generalGuid()
+        public static string GeneralGuid()
         {
-            Random rand = new Random((int) DateTime.Now.Ticks);
+            Random rand = new Random((int)DateTime.Now.Ticks);
             string random_str = "";
             for (int i = 0; i < 6; ++i)
             {
@@ -685,10 +1003,10 @@ namespace LibCommon
                     switch (rand.Next() % 2)
                     {
                         case 1:
-                            random_str += (char) ('A' + rand.Next() % 26);
+                            random_str += (char)('A' + rand.Next() % 26);
                             break;
                         default:
-                            random_str += (char) ('0' + rand.Next() % 10);
+                            random_str += (char)('0' + rand.Next() % 10);
                             break;
                     }
 

@@ -52,8 +52,8 @@ namespace SIPSorcery.Net
         ERROR = 9,
         COOKIE_ECHO = 10,
         COOKIE_ACK = 11,
-        ECNE = 12,          // Not used (specified in the RFC for future use).
-        CWR = 13,           // Not used (specified in the RFC for future use).
+        ECNE = 12, // Not used (specified in the RFC for future use).
+        CWR = 13, // Not used (specified in the RFC for future use).
         SHUTDOWN_COMPLETE = 14,
 
         // Not defined in RFC4960.
@@ -159,7 +159,8 @@ namespace SIPSorcery.Net
         /// about them and this constructor allows starting from a blank slate.
         /// </summary>
         protected SctpChunk()
-        { }
+        {
+        }
 
         /// <summary>
         /// Calculates the length for the chunk. Chunks are required
@@ -171,7 +172,7 @@ namespace SIPSorcery.Net
         public virtual ushort GetChunkLength(bool padded)
         {
             var len = (ushort)(SCTP_CHUNK_HEADER_LENGTH
-                + (ChunkValue == null ? 0 : ChunkValue.Length));
+                               + (ChunkValue == null ? 0 : ChunkValue.Length));
 
             return (padded) ? SctpPadding.PadTo4ByteBoundary(len) : len;
         }
@@ -194,7 +195,8 @@ namespace SIPSorcery.Net
                 // The buffer was not big enough to supply the specified chunk length.
                 int bytesRequired = chunkLength;
                 int bytesAvailable = buffer.Length - posn;
-                throw new ApplicationException($"The SCTP chunk buffer was too short. Required {bytesRequired} bytes but only {bytesAvailable} available.");
+                throw new ApplicationException(
+                    $"The SCTP chunk buffer was too short. Required {bytesRequired} bytes but only {bytesAvailable} available.");
             }
 
             return chunkLength;
@@ -350,7 +352,8 @@ namespace SIPSorcery.Net
                     case SctpChunkType.SHUTDOWN:
                         return SctpShutdownChunk.ParseChunk(buffer, posn);
                     default:
-                        logger.LogDebug($"TODO: Implement parsing logic for well known chunk type {(SctpChunkType)chunkType}.");
+                        logger.LogDebug(
+                            $"TODO: Implement parsing logic for well known chunk type {(SctpChunkType)chunkType}.");
                         return ParseBaseChunk(buffer, posn);
                 }
             }
