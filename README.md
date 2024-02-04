@@ -1,6 +1,15 @@
 #  AKStream介绍 
-## 技术交流QQ群：870526956 
+## 技术交流QQ群：870526956   
+## 注意:本项目的相关资料与Wiki内容都只在GitHub更新,不会在Gitee更新(但是最新代码会同步提交到GitHub和Gitee),有需要最新文档和资料的朋友请移步GitHub 
 -------
+# 感谢DartNoder提供免费的服务器给AKStream
+# Thanks to DartNoder for providing free servers to AKStream. Dear friends, if you have efficient server needs, you can consider DartNoder
+<a href='https://dartnode.com' _target="blank"><img src="https://i.ibb.co/5cPHFS5/WX20240121-210752-2x.png" width="158" height="49" /></a>
+# 感谢jetbrains提供免费的开发者授权证书!
+# Thanks to jetbrains for providing a free developer license
+<img src="https://i.ibb.co/cbvPfgM/jb-beam.png" width="200" height="200" />
+
+
 ![akstream](https://i.loli.net/2021/08/05/5IgjLfCoS9e7NRm.png)
 * AKStream是一套全功能的软NVR接口平台，软NVR指的是软件定义的NVR（Network Video Recoder），AKStream经过长达一年半的开发，测试与调优，已经具备了一定的使用价值，在可靠性，实用性方面都有着较为不错的表现，同时因为AKStream是一套完全开源的软件产品，在众多网友的一起加持下，AKStream的安全性也得到了验证。
 
